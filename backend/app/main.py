@@ -27,7 +27,14 @@ from app.schemas import (
     UsageEventResponse,
     UsageOverviewResponse,
 )
+from app.schemas_conversation import (
+    ConversationHistoryResponse,
+    ConversationResponse,
+    SendMessageRequest,
+    StartConversationRequest,
+)
 from app.services.billing import BillingService
+from app.services.conversation import ConversationService
 from app.services.identity import IdentityService
 from app.services.intake import IntakeService
 from app.services.llm import LLMService
@@ -40,6 +47,7 @@ identity_service = IdentityService()
 intake_service = IntakeService()
 llm_service = LLMService()
 project_service = ProjectService(intake_service=intake_service, billing_service=billing_service, llm_service=llm_service)
+conversation_service = ConversationService(llm_service=llm_service, project_service=project_service)
 run_broker = RunEventBroker()
 run_service = RunService(session_factory=async_session_factory, billing_service=billing_service, broker=run_broker, llm_service=llm_service)
 
@@ -250,6 +258,57 @@ async def get_usage_history(
     session: AsyncSession = Depends(get_db_session),
 ):
     return await billing_service.list_usage_history(session, context["workspace"].id)
+
+
+@app.post(f"{settings.api_v1_prefix}/conversations/start", response_model=ConversationResponse)
+async def start_conversation(
+    payload: StartConversationRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await conversation_service.start_conversation(
+        session,
+        workspace_id=context["workspace"].id,
+        user_id=context["user"].id,
+        initial_message=payload.initial_message,
+    )
+
+
+@app.post(f"{settings.api_v1_prefix}/conversations/{{session_id}}/message", response_model=ConversationResponse)
+async def send_conversation_message(
+    session_id: str,
+    payload: SendMessageRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await conversation_service.send_message(
+        session,
+        session_id=session_id,
+        user_message=payload.content,
+    )
+
+
+@app.get(f"{settings.api_v1_prefix}/conversations/{{session_id}}", response_model=ConversationHistoryResponse)
+async def get_conversation(
+    session_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await conversation_service.get_conversation(session, session_id)
+
+
+@app.post(f"{settings.api_v1_prefix}/conversations/{{session_id}}/generate", response_model=ProjectResponse)
+async def generate_project_from_conversation(
+    session_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await conversation_service.generate_project_from_conversation(
+        session,
+        session_id=session_id,
+        workspace_id=context["workspace"].id,
+        user_id=context["user"].id,
+    )
 
 
 @app.post(f"{settings.api_v1_prefix}/billing/checkout-session", response_model=CheckoutSessionResponse)

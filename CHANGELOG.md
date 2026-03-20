@@ -1,3 +1,156 @@
+# v2.0.1 - 2026-03-20 19:25
+
+## Summary
+Hotfix release to address backend crashes introduced during the conversational flow rollout.
+
+## Files Modified
+- `backend/app/models.py` — modified
+  - Change: Renamed `ConversationMessage.metadata` to `message_metadata`
+  - Reason: `metadata` is reserved in SQLAlchemy declarative models, which caused the app to crash on startup
+
+- `backend/app/services/conversation.py` — modified
+  - Change: Updated references to `message_metadata` and removed manual `updated_at` assignment
+  - Reason: Align with the renamed column and prevent `utc_now()` TypeErrors when processing user messages
+
+- `backend/migrations/002_add_conversation_tables.sql` — modified
+  - Change: Matched column rename for new installations
+  - Reason: Ensure fresh DB setups work without manual fixes
+
+## Impact
+- fixed: Backend now starts cleanly after the conversational flow migration
+- fixed: Sending follow-up messages in a conversation no longer crashes with `utc_now()` argument errors
+- risk: None — changes are limited to new conversation tables/services
+
+## Validation
+- backend: Manual verification — server boots and conversation POST endpoints succeed
+- frontend: Verified chat UI can send multiple turns without triggering backend errors
+
+---
+
+# v2.0.0 - 2026-03-20 17:00
+
+## Summary
+**MAJOR RELEASE**: Transformed the Multi-Agent Debator from a single-prompt submission model into an interactive, conversational experience. Users now build debate projects through natural dialogue, with the system guiding them from a simple topic statement to a fully-configured debate project.
+
+## Files Modified
+
+### Backend
+- `backend/app/models.py` — modified
+  - Change: Added `ConversationSession` and `ConversationMessage` models
+  - Reason: Store conversation state and message history for the new conversational flow
+
+- `backend/app/schemas_conversation.py` — created
+  - Change: New Pydantic schemas for conversation API (ConversationResponse, CollectedContext, etc.)
+  - Reason: Type-safe request/response models for conversation endpoints
+
+- `backend/app/services/conversation.py` — created
+  - Change: Implemented `ConversationService` with LLM-driven stage handlers
+  - Reason: Orchestrate multi-stage conversation flow (topic → decision_makers → constraints → agents → flow → review)
+  - Features: 
+    - Stage-specific prompts for Gemini LLM
+    - Context merging and completeness tracking
+    - Fallback questions for error handling
+    - Project generation from collected context
+
+- `backend/app/main.py` — modified
+  - Change: Added 4 new conversation endpoints: `/conversations/start`, `/conversations/{id}/message`, `/conversations/{id}`, `/conversations/{id}/generate`
+  - Reason: RESTful API for conversational project building
+
+- `backend/migrations/002_add_conversation_tables.sql` — created
+  - Change: Database migration for conversation_sessions and conversation_messages tables
+  - Reason: Persist conversation state across sessions
+
+### Frontend
+- `src/release/conversationTypes.ts` — created
+  - Change: TypeScript interfaces for conversation data structures
+  - Reason: Type-safe frontend conversation state management
+
+- `src/release/api.ts` — modified
+  - Change: Added 4 conversation API client functions
+  - Reason: Frontend-backend communication for conversational flow
+
+- `src/release/ChatInterface.tsx` — created
+  - Change: Full chat UI with message bubbles, quick replies, agent suggestions, and context sidebar
+  - Reason: Primary user interface for conversational project building
+  - Features:
+    - Real-time message streaming
+    - Quick reply chips for common responses
+    - Agent suggestion cards
+    - Context sidebar with completeness tracking
+    - Progressive disclosure of collected information
+
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Replaced `HomeScreen` with `ChatInterface` as default screen
+  - Reason: Make conversational flow the primary UX
+
+## Changes
+- **added**: Conversational project builder with 6-stage flow (topic, decision_makers, constraints, agents, flow, review)
+- **added**: LLM-driven conversation orchestration using Gemini
+- **added**: Real-time context collection and completeness tracking
+- **added**: Quick reply suggestions and agent recommendations
+- **added**: Context sidebar showing collected information
+- **changed**: Default UX from single-prompt form to interactive chat
+- **improved**: User onboarding - no need to know everything upfront
+- **improved**: Agent discovery through AI suggestions based on context
+
+## Conversation Flow Stages
+1. **Topic Identification** (15% complete) - Extract core decision/topic
+2. **Decision Makers** (30% complete) - Identify who's making the decision
+3. **Constraints & Goals** (50% complete) - Collect budget, timeline, success criteria
+4. **Agent Selection** (80% complete) - AI suggests relevant agents, user confirms/customizes
+5. **Flow Configuration** (100% complete) - Determine debate rounds and phases
+6. **Review & Generate** - Summary and project generation
+
+## Impact
+- **user-visible impact**: Completely new UX - conversational chat replaces prompt form
+- **technical impact**: New conversation state management, LLM orchestration layer, database schema
+- **breaking changes**: Old `HomeScreen` component replaced (still available in codebase but not routed)
+- **migration required**: Run `backend/migrations/002_add_conversation_tables.sql` to create new tables
+
+## Validation
+- **tests**: Not run (manual testing required)
+- **lint**: TypeScript compilation successful
+- **build**: Not run
+- **manual verification**: Pending - requires:
+  1. Database migration execution
+  2. Backend restart
+  3. Frontend rebuild
+  4. End-to-end conversation flow test
+
+## Follow-up
+- **remaining work**:
+  - Run database migration
+  - Test full conversation flow from topic to project generation
+  - Verify LLM responses are coherent and helpful
+  - Test error handling (network failures, LLM timeouts)
+  - Verify context sidebar updates correctly
+  - Test project generation from conversation context
+  
+- **technical debt**:
+  - LLM prompts are hardcoded strings (could be externalized)
+  - No conversation history pagination (all messages loaded at once)
+  - No conversation resume after browser refresh (session ID not persisted)
+  - No multi-user collaborative conversations
+  - Stage transitions are linear (no going back to previous stages)
+  
+- **future enhancements**:
+  - Voice input support
+  - Conversation export (PDF/markdown)
+  - Preset templates for common scenarios
+  - Conversation branching (allow editing earlier answers)
+  - Real-time collaboration (multiple users in same conversation)
+
+## Design Documentation
+See `docs/CONVERSATIONAL_FLOW_DESIGN.md` for complete design specification including:
+- User journey examples
+- Architecture diagrams
+- Database schema details
+- API endpoint specifications
+- LLM orchestration prompts
+- UI/UX mockups
+
+---
+
 # v1.0.7 - 2026-03-20 16:15
 
 ## Summary

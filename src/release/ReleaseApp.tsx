@@ -4,7 +4,7 @@ import { Loader2, LogOut } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import AuthScreen from './AuthScreen';
-import HomeScreen from './HomeScreen';
+import ChatInterface from './ChatInterface';
 import ProjectReviewScreen from './ProjectReviewScreen';
 import RunScreen from './RunScreen';
 import { getMe } from './api';
@@ -132,7 +132,7 @@ export default function ReleaseApp() {
       {error ? <div className="max-w-7xl mx-auto px-6 pt-6"><div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div></div> : null}
 
       {!project ? (
-        <HomeScreen token={token} onProjectGenerated={setProject} />
+        <ChatInterface token={token} onProjectGenerated={setProject} />
       ) : run ? (
         <RunScreen token={token} project={project} initialRun={run} onBack={() => setRun(null)} />
       ) : (

@@ -8,6 +8,12 @@ import type {
   RunResponse,
   TranscriptMessageResponse,
 } from './types';
+import type {
+  ConversationHistoryResponse,
+  ConversationResponse,
+  SendMessageRequest,
+  StartConversationRequest,
+} from './conversationTypes';
 
 export class ApiError extends Error {
   status: number;
@@ -141,4 +147,43 @@ export async function getRunResult(token: string, runId: string): Promise<FinalO
 export function createRunEventsSource(token: string, runId: string): EventSource {
   const url = `${API_BASE_URL}/api/v1/runs/${runId}/events?access_token=${encodeURIComponent(token)}`;
   return new EventSource(url);
+}
+
+export async function startConversation(
+  token: string,
+  payload: StartConversationRequest,
+): Promise<ConversationResponse> {
+  return request<ConversationResponse>('/api/v1/conversations/start', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function sendConversationMessage(
+  token: string,
+  sessionId: string,
+  payload: SendMessageRequest,
+): Promise<ConversationResponse> {
+  return request<ConversationResponse>(`/api/v1/conversations/${sessionId}/message`, token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getConversation(
+  token: string,
+  sessionId: string,
+): Promise<ConversationHistoryResponse> {
+  return request<ConversationHistoryResponse>(`/api/v1/conversations/${sessionId}`, token, {
+    method: 'GET',
+  });
+}
+
+export async function generateProjectFromConversation(
+  token: string,
+  sessionId: string,
+): Promise<ProjectResponse> {
+  return request<ProjectResponse>(`/api/v1/conversations/${sessionId}/generate`, token, {
+    method: 'POST',
+  });
 }
