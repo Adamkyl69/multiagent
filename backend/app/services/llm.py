@@ -175,7 +175,14 @@ class LLMService:
         message_type = str(response.get("message_type") or "statement").strip().lower()
         if message_type not in {"statement", "challenge", "answer", "synthesis"}:
             message_type = "statement"
-        content = str(response.get("content") or "").strip()
+        
+        # Handle multiple response formats from LLM
+        content = ""
+        if "content" in response:
+            content = str(response.get("content") or "").strip()
+        elif "message" in response and isinstance(response["message"], dict):
+            content = str(response["message"].get("content") or "").strip()
+        
         if not content:
             logger.error(f"LLM returned empty debate turn content. Full response: {response}")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM returned an empty debate turn.")

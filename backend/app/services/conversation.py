@@ -354,12 +354,17 @@ CURRENT STAGE: Agent Selection
 
 IMPORTANT: Look at the collected context (topic, goals, concerns) and suggest 3-5 agents that are SPECIFICALLY relevant to that topic.
 
-For example:
-- If topic is about "US foreign policy" → suggest International Relations Expert, Geopolitical Analyst, Trade Policy Specialist, etc.
-- If topic is about "UAE market expansion" → suggest Market Research Expert, Financial Analyst, Regulatory Specialist, etc.
-- If topic is about "product pricing" → suggest Pricing Strategist, Market Analyst, Financial Analyst, etc.
+NAMING CONVENTION: Use role-based names with "Agent" suffix. Examples:
+- "Financial Analyst Agent" (NOT "Dr. John Smith" or "Jane Doe")
+- "Market Research Agent" (NOT real person names)
+- "Policy Expert Agent" (NOT fictional character names)
 
-DO NOT suggest generic agents. Tailor them to the specific topic and domain.
+For example:
+- If topic is about "US foreign policy" → suggest "International Relations Agent", "Geopolitical Analyst Agent", "Trade Policy Agent"
+- If topic is about "UAE market expansion" → suggest "Market Research Agent", "Financial Analyst Agent", "Regulatory Expert Agent"
+- If topic is about "product pricing" → suggest "Pricing Strategy Agent", "Market Analyst Agent", "Financial Advisor Agent"
+
+DO NOT use real names, fictional names, or titles like "Dr." or "Professor". ONLY use role-based names ending with "Agent".
 
 Extract user's response:
 - If they accept suggestions → mark agents as confirmed
@@ -370,7 +375,7 @@ Respond in JSON format:
 {
   "extracted_info": {
     "agents": [
-      {"name": "Specific Agent Name", "role": "Clear description", "confirmed": true}
+      {"name": "Role Name Agent", "role": "Clear description", "confirmed": true}
     ]
   },
   "next_question": "Great! I've added [X] agents. How many debate rounds should we run?",

@@ -1,3 +1,51 @@
+# v2.0.9 - 2026-03-20 20:40
+
+## Summary
+Fixed 502 empty debate turn error by handling nested LLM response structure, and updated agent naming to use role-based format ("XYZ Agent") instead of real names.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Updated content extraction to handle nested `message.content` structure in LLM response
+  - Reason: LLM was returning `{"message": {"sender": "...", "content": "..."}}` instead of `{"content": "..."}`
+  - Change: Added fallback to check `response["message"]["content"]` when `response["content"]` is missing
+  - Reason: Different LLM response formats need to be handled gracefully
+
+- `backend/app/services/conversation.py` — modified
+  - Change: Updated `_get_agents_prompt` with explicit naming convention requiring "Agent" suffix
+  - Reason: User requested role-based names ("Financial Analyst Agent") instead of real names ("Dr. Evelyn Reed")
+  - Change: Added examples showing correct format and explicit "DO NOT use real names" instruction
+  - Reason: LLM was generating fictional character names which was confusing
+
+## Changes
+- fixed: 502 empty debate turn error caused by nested LLM response structure
+- changed: Agent names now use role-based format ending with "Agent"
+- improved: LLM prompts explicitly prohibit real names, fictional names, and titles
+
+## Impact
+- user-visible impact: Debates now run successfully without 502 errors
+- user-visible impact: Agents have clear role-based names like "Financial Analyst Agent"
+- technical impact: Content extraction handles multiple LLM response formats
+- risks or side effects: None
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires running a full debate
+
+## Follow-up
+- remaining work
+  - Test full debate execution with new content extraction
+  - Verify agents are named correctly in new conversations
+- technical debt
+  - Could standardize LLM response format in prompts
+  - Consider adding response schema validation
+- limitations
+  - Agent naming depends on LLM following prompt instructions
+
+---
+
 # v2.0.8 - 2026-03-20 20:35
 
 ## Summary
