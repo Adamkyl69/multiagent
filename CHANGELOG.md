@@ -1,3 +1,45 @@
+# v2.0.6 - 2026-03-20 20:15
+
+## Summary
+Improved error handling for 502 errors caused by empty LLM responses, adding diagnostic information about safety blocks and finish reasons.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Enhanced `_generate_json_gemini` to check for safety blocks and finish reasons when LLM returns empty content
+  - Reason: Users were getting generic "LLM returned an empty debate turn" 502 errors without understanding why (safety filters, content blocks, etc.)
+  - Change: Added diagnostic checks for `finish_reason` and `safety_ratings` from Gemini response
+  - Reason: Provide actionable error messages (e.g., "LLM response blocked by safety filters. Try rephrasing your request.")
+
+## Changes
+- improved: 502 errors now include specific reasons (safety blocks, finish reasons) instead of generic "empty content" message
+- improved: Users get actionable guidance ("Try rephrasing your request") when LLM blocks content
+- fixed: Better diagnostic information for debugging LLM response issues
+
+## Impact
+- user-visible impact: Users see helpful error messages explaining why their debate failed (safety filters, content blocks)
+- technical impact: Easier to diagnose LLM response issues with detailed error information
+- risks or side effects: None - only improves error reporting
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires triggering a debate that causes LLM safety block or empty response
+
+## Follow-up
+- remaining work
+  - Test with content that triggers safety filters
+  - Verify error messages are helpful and actionable
+  - Monitor for other empty response scenarios
+- technical debt
+  - Could add retry logic for certain types of blocks
+  - Consider adjusting safety settings if blocks are too aggressive
+- limitations
+  - Cannot bypass legitimate safety blocks - users must rephrase
+
+---
+
 # v2.0.5 - 2026-03-20 20:07
 
 ## Summary

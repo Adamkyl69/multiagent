@@ -277,9 +277,32 @@ class LLMService:
 
         self._last_response = response
         setattr(self._last_response, "_resolved_model", resolved_model)
+        
+        # Check for safety blocks or other issues
         text = getattr(response, "text", None)
         if not text:
+            # Try to get more diagnostic information
+            candidates = getattr(response, "candidates", [])
+            if candidates:
+                candidate = candidates[0]
+                finish_reason = getattr(candidate, "finish_reason", None)
+                safety_ratings = getattr(candidate, "safety_ratings", [])
+                
+                if finish_reason and finish_reason != "STOP":
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"LLM response blocked. Reason: {finish_reason}. Try rephrasing your request."
+                    )
+                if safety_ratings:
+                    blocked = [r for r in safety_ratings if getattr(r, "blocked", False)]
+                    if blocked:
+                        raise HTTPException(
+                            status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="LLM response blocked by safety filters. Try rephrasing your request."
+                        )
+            
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM did not return content.")
+        
         try:
             return json.loads(text)
         except json.JSONDecodeError as exc:
