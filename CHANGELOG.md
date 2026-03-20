@@ -1,3 +1,88 @@
+# v2.0.8 - 2026-03-20 20:35
+
+## Summary
+Added logging for "LLM returned an empty debate turn" errors to show the full LLM response in backend logs.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Added `logger.error()` call before raising "LLM returned an empty debate turn" exception
+  - Reason: Users were seeing "502: LLM returned an empty debate turn" in UI but nothing in backend logs
+  - Change: Log the full response object when content field is empty
+  - Reason: Need to see what the LLM actually returned (e.g., empty string, null, missing field) to diagnose the issue
+
+## Changes
+- fixed: Empty debate turn errors now appear in backend logs with full LLM response
+- improved: Can now diagnose why LLM is returning empty content field
+
+## Impact
+- user-visible impact: No change to user-facing errors, but developers can now debug issues
+- technical impact: Backend logs now show what LLM returned when content is empty
+- risks or side effects: None - only adds logging
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires triggering an empty debate turn response
+
+## Follow-up
+- remaining work
+  - Test that logs appear when LLM returns empty content
+  - Analyze patterns in empty responses to improve prompts
+  - Consider adding retry logic for empty responses
+- technical debt
+  - Could add more context (agent name, phase, round) to error logs
+  - Consider validating response structure before extracting content
+- limitations
+  - Logs full response object which could be large
+
+---
+
+# v2.0.7 - 2026-03-20 20:31
+
+## Summary
+Added logging for LLM invalid JSON errors so they appear in backend logs with the actual response text for debugging.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Added `import logging` and created logger instance
+  - Reason: Need to log errors before raising HTTPException so they appear in backend logs
+  - Change: Added `logger.error()` calls before all "LLM returned invalid JSON" exceptions across all providers (Gemini, OpenAI, Anthropic, xAI)
+  - Reason: Users were seeing "502: LLM returned invalid JSON" errors in UI but nothing in backend logs, making debugging impossible
+  - Change: Log first 500 characters of the invalid response text
+  - Reason: Provide enough context to diagnose what the LLM actually returned without flooding logs
+
+## Changes
+- fixed: LLM invalid JSON errors now appear in backend logs with actual response text
+- improved: Debugging LLM response issues is now possible by checking backend logs
+- improved: All LLM providers (Gemini, OpenAI, Anthropic, xAI) now log invalid JSON responses
+
+## Impact
+- user-visible impact: No change to user-facing errors, but developers can now debug issues
+- technical impact: Backend logs now contain actionable information for LLM JSON parsing failures
+- risks or side effects: None - only adds logging
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires triggering an invalid JSON response from LLM
+
+## Follow-up
+- remaining work
+  - Test that logs appear when LLM returns invalid JSON
+  - Verify 500 character truncation is sufficient for debugging
+  - Monitor logs for patterns in invalid JSON responses
+- technical debt
+  - Could add more structured logging (JSON format) for better log parsing
+  - Consider adding request context (agent name, phase, etc.) to error logs
+- limitations
+  - Only logs first 500 characters of response (to avoid log spam)
+
+---
+
 # v2.0.6 - 2026-03-20 20:15
 
 ## Summary

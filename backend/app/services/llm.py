@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -7,6 +8,8 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.schemas import AgentDraft, FlowStepDraft, ProjectVersionSnapshot, PromptIntakeAssessment
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -174,6 +177,7 @@ class LLMService:
             message_type = "statement"
         content = str(response.get("content") or "").strip()
         if not content:
+            logger.error(f"LLM returned empty debate turn content. Full response: {response}")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM returned an empty debate turn.")
         return DebateTurnResult(content=content, message_type=message_type, usage=self._usage_from_response(model, self._last_response, provider))
 
@@ -306,6 +310,7 @@ class LLMService:
         try:
             return json.loads(text)
         except json.JSONDecodeError as exc:
+            logger.error(f"Gemini returned invalid JSON. Raw response (first 500 chars): {text[:500]}")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM returned invalid JSON.") from exc
 
     async def _generate_json_openai(self, *, model: str, system_instruction: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -330,6 +335,7 @@ class LLMService:
         try:
             return json.loads(text)
         except json.JSONDecodeError as exc:
+            logger.error(f"OpenAI returned invalid JSON. Raw response (first 500 chars): {text[:500]}")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM returned invalid JSON.") from exc
 
     async def _generate_json_anthropic(self, *, model: str, system_instruction: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -354,6 +360,7 @@ class LLMService:
         try:
             return json.loads(text)
         except json.JSONDecodeError as exc:
+            logger.error(f"Anthropic returned invalid JSON. Raw response (first 500 chars): {text[:500]}")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM returned invalid JSON.") from exc
 
     async def _generate_json_xai(self, *, model: str, system_instruction: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -378,6 +385,7 @@ class LLMService:
         try:
             return json.loads(text)
         except json.JSONDecodeError as exc:
+            logger.error(f"xAI returned invalid JSON. Raw response (first 500 chars): {text[:500]}")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM returned invalid JSON.") from exc
 
     def _get_gemini_client(self) -> Any:
