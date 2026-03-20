@@ -24,6 +24,12 @@ export interface PromptIntakeAssessment {
   warnings: string[];
 }
 
+export interface ClarificationRequiredResponse {
+  message: string;
+  clarification_session_id?: string;
+  assessment: PromptIntakeAssessment;
+}
+
 export interface AgentCapabilities {
   ask: boolean;
   challenge: boolean;

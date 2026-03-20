@@ -52,6 +52,30 @@ class LLMService:
         self._xai_client: Any | None = None
         self._last_response: Any | None = None
 
+    def _gemini_model_candidates(self, model: str) -> list[str]:
+        candidates: list[str] = []
+
+        def add(candidate: str) -> None:
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        add(model)
+        alias_map = {
+            "gemini-2.0-flash-exp": "gemini-2.5-flash-lite",
+            "gemini-2.0-flash": "gemini-2.5-flash-lite",
+            "gemini-2.0-pro-exp": "gemini-2.5-flash-lite",
+            "gemini-1.5-pro-latest": "gemini-2.5-flash-lite",
+            "gemini-1.5-flash-latest": "gemini-2.5-flash-lite",
+            "gemini-1.5-pro": "gemini-2.5-flash-lite",
+            "gemini-1.5-flash": "gemini-2.5-flash-lite",
+        }
+        add(alias_map.get(model, ""))
+        if model.endswith("-exp") or model.endswith("-preview"):
+            base = model.removesuffix("-exp").removesuffix("-preview")
+            add(base)
+        add("gemini-2.5-flash-lite")
+        return candidates
+
     async def generate_project_snapshot(
         self,
         *,
@@ -211,19 +235,48 @@ class LLMService:
         client = self._get_gemini_client()
         from google.genai import types as genai_types
 
-        def _call() -> Any:
-            return client.models.generate_content(
-                model=model,
-                contents=json.dumps(payload, ensure_ascii=False),
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    response_mime_type="application/json",
-                    temperature=0.35,
-                ),
+        last_error: Exception | None = None
+        response: Any | None = None
+        resolved_model = model
+
+        for candidate_model in self._gemini_model_candidates(model):
+            def _call() -> Any:
+                return client.models.generate_content(
+                    model=candidate_model,
+                    contents=json.dumps(payload, ensure_ascii=False),
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        response_mime_type="application/json",
+                        temperature=0.35,
+                    ),
+                )
+
+            try:
+                response = await asyncio.to_thread(_call)
+                resolved_model = candidate_model
+                break
+            except Exception as exc:
+                last_error = exc
+                error_text = str(exc)
+                if "PERMISSION_DENIED" in error_text or "API key" in error_text or "leaked" in error_text.lower():
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="Gemini API key is invalid, restricted, or has been disabled. Update GEMINI_API_KEY in backend/.env.",
+                    ) from exc
+                if "NOT_FOUND" not in str(exc) and "not found" not in str(exc).lower():
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Gemini request failed: {error_text}",
+                    ) from exc
+
+        if response is None:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Gemini model unavailable. Tried: {', '.join(self._gemini_model_candidates(model))}. Last error: {last_error}",
             )
 
-        response = await asyncio.to_thread(_call)
         self._last_response = response
+        setattr(self._last_response, "_resolved_model", resolved_model)
         text = getattr(response, "text", None)
         if not text:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM did not return content.")

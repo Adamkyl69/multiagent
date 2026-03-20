@@ -17,14 +17,14 @@ $global:frontendPos = 0
 # Main form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Server Manager - Multi-Agent Debator"
-$form.Size = New-Object System.Drawing.Size(1400,800)
+$form.Size = New-Object System.Drawing.Size(1400,850)
 $form.StartPosition = "CenterScreen"
 $form.BackColor = [System.Drawing.Color]::FromArgb(25,25,30)
 
 # ===== LEFT PANEL: Controls =====
 $panelControls = New-Object System.Windows.Forms.Panel
 $panelControls.Location = New-Object System.Drawing.Point(10,10)
-$panelControls.Size = New-Object System.Drawing.Size(300,740)
+$panelControls.Size = New-Object System.Drawing.Size(300,790)
 $panelControls.BackColor = [System.Drawing.Color]::FromArgb(35,35,40)
 $form.Controls.Add($panelControls)
 
@@ -58,6 +58,28 @@ function New-ControlButton($text, $y, $color) {
     return $btn
 }
 
+function Stop-Ports([int[]]$ports) {
+    $killed = New-Object System.Collections.Generic.List[string]
+    foreach ($port in $ports) {
+        $connections = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+        foreach ($processId in $connections) {
+            if ($processId -and $processId -gt 0) {
+                taskkill /F /PID $processId /T 2>$null | Out-Null
+                $killed.Add("Port $port -> PID $processId")
+            }
+        }
+    }
+    return $killed
+}
+
+function Write-ManagerLogEntry($path, $message) {
+    try {
+        [System.IO.File]::AppendAllText($path, $message + [Environment]::NewLine)
+    } catch {
+    }
+}
+
 # Start Backend
 $btnStartBackend = New-ControlButton "START BACKEND" 80 ([System.Drawing.Color]::FromArgb(76,175,80))
 $btnStartBackend.Add_Click({
@@ -87,13 +109,18 @@ $panelControls.Controls.Add($btnStartBackend)
 # Stop Backend
 $btnStopBackend = New-ControlButton "STOP BACKEND" 130 ([System.Drawing.Color]::FromArgb(244,67,54))
 $btnStopBackend.Add_Click({
+    # Kill manager-controlled process
     if ($global:backendJob -and -not $global:backendJob.HasExited) {
-        Stop-Process -Id $global:backendJob.Id -Force -ErrorAction SilentlyContinue
+        taskkill /F /PID $global:backendJob.Id /T 2>$null | Out-Null
     }
+    $global:backendJob = $null
+    
+    # Kill any process on port 8000
     Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | 
         Select-Object -ExpandProperty OwningProcess -Unique | 
-        ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+        ForEach-Object { taskkill /F /PID $_ /T 2>$null | Out-Null }
     
+    Start-Sleep -Milliseconds 500
     $lblBackend.Text = "Backend: STOPPED"
     $lblBackend.ForeColor = [System.Drawing.Color]::Red
 })
@@ -127,13 +154,18 @@ $panelControls.Controls.Add($btnStartFrontend)
 # Stop Frontend
 $btnStopFrontend = New-ControlButton "STOP FRONTEND" 240 ([System.Drawing.Color]::FromArgb(244,67,54))
 $btnStopFrontend.Add_Click({
+    # Kill manager-controlled process
     if ($global:frontendJob -and -not $global:frontendJob.HasExited) {
-        Stop-Process -Id $global:frontendJob.Id -Force -ErrorAction SilentlyContinue
+        taskkill /F /PID $global:frontendJob.Id /T 2>$null | Out-Null
     }
+    $global:frontendJob = $null
+    
+    # Kill any process on port 3000
     Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | 
         Select-Object -ExpandProperty OwningProcess -Unique | 
-        ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+        ForEach-Object { taskkill /F /PID $_ /T 2>$null | Out-Null }
     
+    Start-Sleep -Milliseconds 500
     $lblFrontend.Text = "Frontend: STOPPED"
     $lblFrontend.ForeColor = [System.Drawing.Color]::Red
 })
@@ -156,8 +188,40 @@ $btnStopAll.Add_Click({
 })
 $panelControls.Controls.Add($btnStopAll)
 
+# Kill Active Ports
+$btnKillPorts = New-ControlButton "KILL ACTIVE PORT TASKS" 410 ([System.Drawing.Color]::FromArgb(121,85,72))
+$btnKillPorts.Add_Click({
+    $portsToKill = @(3000, 4173, 5173, 8000, 8080, 8081, 8787)
+    $killed = Stop-Ports $portsToKill
+    $global:backendJob = $null
+    $global:frontendJob = $null
+
+    $lblBackend.Text = "Backend: STOPPED"
+    $lblBackend.ForeColor = [System.Drawing.Color]::Red
+    $lblFrontend.Text = "Frontend: STOPPED"
+    $lblFrontend.ForeColor = [System.Drawing.Color]::Red
+
+    $message = if ($killed.Count -gt 0) {
+        "Killed tasks:`n" + ($killed -join "`n")
+    } else {
+        "No active listeners found on managed dev ports."
+    }
+
+    $timestampedMessage = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $message"
+    Write-ManagerLogEntry $BACKEND_LOG $timestampedMessage
+    Write-ManagerLogEntry $FRONTEND_LOG $timestampedMessage
+    if ($txtBackendLog) {
+        $txtBackendLog.AppendText($timestampedMessage + "`r`n")
+    }
+    if ($txtFrontendLog) {
+        $txtFrontendLog.AppendText($timestampedMessage + "`r`n")
+    }
+    [System.Windows.Forms.MessageBox]::Show($message, "Kill Active Port Tasks")
+})
+$panelControls.Controls.Add($btnKillPorts)
+
 # Export Backend Logs
-$btnExportBackend = New-ControlButton "EXPORT BACKEND LOGS" 430 ([System.Drawing.Color]::FromArgb(63,81,181))
+$btnExportBackend = New-ControlButton "EXPORT BACKEND LOGS" 480 ([System.Drawing.Color]::FromArgb(63,81,181))
 $btnExportBackend.Add_Click({
     $saveDialog = New-Object System.Windows.Forms.SaveFileDialog
     $saveDialog.Filter = "Log files (*.log)|*.log|Text files (*.txt)|*.txt|All files (*.*)|*.*"
@@ -170,7 +234,7 @@ $btnExportBackend.Add_Click({
 $panelControls.Controls.Add($btnExportBackend)
 
 # Export Frontend Logs
-$btnExportFrontend = New-ControlButton "EXPORT FRONTEND LOGS" 480 ([System.Drawing.Color]::FromArgb(63,81,181))
+$btnExportFrontend = New-ControlButton "EXPORT FRONTEND LOGS" 530 ([System.Drawing.Color]::FromArgb(63,81,181))
 $btnExportFrontend.Add_Click({
     $saveDialog = New-Object System.Windows.Forms.SaveFileDialog
     $saveDialog.Filter = "Log files (*.log)|*.log|Text files (*.txt)|*.txt|All files (*.*)|*.*"
@@ -183,7 +247,7 @@ $btnExportFrontend.Add_Click({
 $panelControls.Controls.Add($btnExportFrontend)
 
 # Clear Logs
-$btnClearLogs = New-ControlButton "CLEAR ALL LOGS" 540 ([System.Drawing.Color]::FromArgb(96,125,139))
+$btnClearLogs = New-ControlButton "CLEAR ALL LOGS" 580 ([System.Drawing.Color]::FromArgb(96,125,139))
 $btnClearLogs.Add_Click({
     $txtBackendLog.Text = ""
     $txtFrontendLog.Text = ""
@@ -195,14 +259,14 @@ $btnClearLogs.Add_Click({
 $panelControls.Controls.Add($btnClearLogs)
 
 # Open App
-$btnOpenApp = New-ControlButton "OPEN APP" 600 ([System.Drawing.Color]::FromArgb(0,150,136))
+$btnOpenApp = New-ControlButton "OPEN APP" 640 ([System.Drawing.Color]::FromArgb(0,150,136))
 $btnOpenApp.Add_Click({
     Start-Process "http://localhost:3000"
 })
 $panelControls.Controls.Add($btnOpenApp)
 
 # Open API Docs
-$btnOpenDocs = New-ControlButton "API DOCS" 650 ([System.Drawing.Color]::FromArgb(0,150,136))
+$btnOpenDocs = New-ControlButton "API DOCS" 690 ([System.Drawing.Color]::FromArgb(0,150,136))
 $btnOpenDocs.Add_Click({
     Start-Process "http://127.0.0.1:8000/docs"
 })
@@ -211,7 +275,7 @@ $panelControls.Controls.Add($btnOpenDocs)
 # ===== RIGHT PANEL: Logs =====
 $panelLogs = New-Object System.Windows.Forms.Panel
 $panelLogs.Location = New-Object System.Drawing.Point(320,10)
-$panelLogs.Size = New-Object System.Drawing.Size(1060,740)
+$panelLogs.Size = New-Object System.Drawing.Size(1060,790)
 $panelLogs.BackColor = [System.Drawing.Color]::FromArgb(35,35,40)
 $form.Controls.Add($panelLogs)
 
@@ -253,7 +317,7 @@ $txtFrontendLog.ReadOnly = $true
 $txtFrontendLog.ScrollBars = "Both"
 $txtFrontendLog.WordWrap = $false
 $txtFrontendLog.Location = New-Object System.Drawing.Point(10,410)
-$txtFrontendLog.Size = New-Object System.Drawing.Size(1040,320)
+$txtFrontendLog.Size = New-Object System.Drawing.Size(1040,370)
 $txtFrontendLog.BackColor = [System.Drawing.Color]::Black
 $txtFrontendLog.ForeColor = [System.Drawing.Color]::Cyan
 $txtFrontendLog.Font = New-Object System.Drawing.Font("Consolas",9)
@@ -279,21 +343,31 @@ $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 1000
 $timer.Add_Tick({
     try {
-        # Update backend status
-        $backendRunning = $null -ne (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)
-        if ($backendRunning) {
-            $lblBackend.Text = "Backend: RUNNING"
+        # Update backend status - only show green if manager controls it
+        $backendPortActive = $null -ne (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)
+        $backendControlled = $global:backendJob -and -not $global:backendJob.HasExited
+        
+        if ($backendControlled -and $backendPortActive) {
+            $lblBackend.Text = "Backend: RUNNING (Managed)"
             $lblBackend.ForeColor = [System.Drawing.Color]::LightGreen
+        } elseif ($backendPortActive) {
+            $lblBackend.Text = "Backend: EXTERNAL (Not Managed)"
+            $lblBackend.ForeColor = [System.Drawing.Color]::Orange
         } elseif ($lblBackend.Text -notlike "*STARTING*") {
             $lblBackend.Text = "Backend: STOPPED"
             $lblBackend.ForeColor = [System.Drawing.Color]::Red
         }
         
-        # Update frontend status
-        $frontendRunning = $null -ne (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)
-        if ($frontendRunning) {
-            $lblFrontend.Text = "Frontend: RUNNING"
+        # Update frontend status - only show green if manager controls it
+        $frontendPortActive = $null -ne (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)
+        $frontendControlled = $global:frontendJob -and -not $global:frontendJob.HasExited
+        
+        if ($frontendControlled -and $frontendPortActive) {
+            $lblFrontend.Text = "Frontend: RUNNING (Managed)"
             $lblFrontend.ForeColor = [System.Drawing.Color]::LightGreen
+        } elseif ($frontendPortActive) {
+            $lblFrontend.Text = "Frontend: EXTERNAL (Not Managed)"
+            $lblFrontend.ForeColor = [System.Drawing.Color]::Orange
         } elseif ($lblFrontend.Text -notlike "*STARTING*") {
             $lblFrontend.Text = "Frontend: STOPPED"
             $lblFrontend.ForeColor = [System.Drawing.Color]::Red

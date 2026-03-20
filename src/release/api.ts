@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../lib/env';
 import type {
   AuthMeResponse,
+  ClarificationRequiredResponse,
   FinalOutputResponse,
   ProjectResponse,
   PromptIntakeAssessment,
@@ -31,15 +32,31 @@ async function request<T>(path: string, token: string, init: RequestInit = {}): 
 
   if (!response.ok) {
     let detail: unknown = null;
+    let message = `Request failed with status ${response.status}`;
+    
     try {
       detail = await response.json();
+      if (typeof detail === 'object' && detail && 'detail' in detail) {
+        const detailValue = (detail as { detail?: unknown }).detail;
+        if (typeof detailValue === 'string') {
+          message = detailValue;
+        } else if (Array.isArray(detailValue)) {
+          message = detailValue.map(e => typeof e === 'object' && e && 'msg' in e ? String(e.msg) : String(e)).join(', ');
+        } else {
+          message = JSON.stringify(detailValue);
+        }
+      }
     } catch {
-      detail = await response.text();
+      try {
+        detail = await response.text();
+        if (typeof detail === 'string' && detail.length > 0) {
+          message = detail;
+        }
+      } catch {
+        // Use default message
+      }
     }
-    const message =
-      typeof detail === 'object' && detail && 'detail' in detail
-        ? String((detail as { detail?: unknown }).detail)
-        : `Request failed with status ${response.status}`;
+    
     throw new ApiError(message, response.status, detail);
   }
 
@@ -77,6 +94,8 @@ export async function generateProject(
     body: JSON.stringify(payload),
   });
 }
+
+export type { ClarificationRequiredResponse };
 
 export async function updateProject(
   token: string,

@@ -81,8 +81,15 @@ class BillingService:
             )
         )
         if summary is None:
-            summary = MonthlyUsageSummary(workspace_id=workspace_id, month_key=month_key)
+            summary = MonthlyUsageSummary(
+                workspace_id=workspace_id,
+                month_key=month_key,
+                total_tokens=0,
+                total_cost_cents=0,
+                total_runs=0,
+            )
             session.add(summary)
+            await session.flush()
 
         summary.total_tokens += total_tokens
         summary.total_cost_cents += cost_estimate_cents

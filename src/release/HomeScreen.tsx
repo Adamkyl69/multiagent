@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, Loader2, ShieldAlert, Sparkles } from 'lucide-react';
 
 import { ApiError, evaluatePrompt, generateProject } from './api';
-import type { ProjectResponse, PromptIntakeAssessment } from './types';
+import type { ClarificationRequiredResponse, ProjectResponse, PromptIntakeAssessment } from './types';
 
 interface HomeScreenProps {
   token: string;
@@ -39,8 +39,13 @@ export default function HomeScreen({ token, onProjectGenerated }: HomeScreenProp
       });
       setAssessment(nextAssessment);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : 'Unable to evaluate prompt.';
-      setError(message);
+      if (caught instanceof ApiError) {
+        setError(caught.message || `API Error: ${caught.status}`);
+      } else if (caught instanceof Error) {
+        setError(caught.message);
+      } else {
+        setError(String(caught) || 'Unable to evaluate prompt.');
+      }
     } finally {
       setLoading('idle');
     }
@@ -61,13 +66,20 @@ export default function HomeScreen({ token, onProjectGenerated }: HomeScreenProp
       onProjectGenerated(project);
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409) {
-        const detail = caught.detail as { assessment?: PromptIntakeAssessment } | null;
+        const detail = caught.detail as ClarificationRequiredResponse | { assessment?: PromptIntakeAssessment; message?: string } | null;
         if (detail?.assessment) {
           setAssessment(detail.assessment);
+          setError(detail.message ?? 'Please answer the clarification questions below before generating the project.');
+          return;
         }
       }
-      const message = caught instanceof Error ? caught.message : 'Unable to generate project.';
-      setError(message);
+      if (caught instanceof ApiError) {
+        setError(caught.message || `API Error: ${caught.status}`);
+      } else if (caught instanceof Error) {
+        setError(caught.message);
+      } else {
+        setError(String(caught) || 'Unable to generate project.');
+      }
     } finally {
       setLoading('idle');
     }
@@ -136,6 +148,13 @@ export default function HomeScreen({ token, onProjectGenerated }: HomeScreenProp
                   <ShieldAlert className="w-4 h-4 text-amber-300" />
                   Clarification required
                 </div>
+                <p className="text-sm text-slate-400">
+                  The backend needs a bit more context before it can build a project draft. Fill in the answers below, then click
+                  {' '}
+                  <span className="font-semibold text-slate-200">Generate project draft</span>
+                  {' '}
+                  again.
+                </p>
                 {assessment.clarification_questions.map((question) => (
                   <label key={question.key} className="block space-y-2">
                     <span className="text-sm font-semibold text-slate-200">{question.question}</span>
