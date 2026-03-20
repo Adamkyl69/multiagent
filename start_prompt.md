@@ -46,3 +46,6 @@ Rules:
 - document every changed file
 - explain both change and reason
 - be honest about unverified work
+
+
+Do not commit or push to github unless explicitly asked to do so.
