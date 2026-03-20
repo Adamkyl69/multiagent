@@ -1,3 +1,181 @@
+# v2.0.5 - 2026-03-20 20:07
+
+## Summary
+Improved contextual awareness for decision maker questions and made Generate Project button visible earlier (at 80% completeness instead of 100%).
+
+## Files Modified
+- `backend/app/services/conversation.py` — modified
+  - Change: Enhanced `_get_decision_makers_prompt` with contextual awareness examples
+  - Reason: LLM was asking inappropriate questions (e.g., "CEO or Board" for family car purchase decisions)
+  - Change: Added domain-specific examples (personal/family, business, technical) to guide LLM
+  - Reason: System needs to adapt questions based on topic domain (personal vs professional context)
+  - Change: Lowered `can_generate` threshold from 100% to 80% completeness
+  - Reason: Users should be able to generate projects once they have sufficient information, not only at 100%
+  - Change: Updated `generate_project_from_conversation` to accept 80% threshold
+  - Reason: Align generation logic with button visibility
+
+## Changes
+- improved: Decision maker questions now adapt to topic domain (Family/Individual for personal decisions, CEO/Board for business)
+- improved: Generate Project button appears at 80% completeness instead of 100%
+- improved: LLM prompts include contextual examples for better question relevance
+
+## Impact
+- user-visible impact: Questions are now contextually appropriate (no more "CEO" for family decisions)
+- user-visible impact: Generate Project button visible earlier in conversation flow
+- technical impact: LLM has better guidance for adapting to different decision contexts
+- risks or side effects: 80% threshold may allow generation with less complete information
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires testing with personal and business decision topics
+
+## Follow-up
+- remaining work
+  - Test personal decision topics (car, home, education) get appropriate decision maker suggestions
+  - Test business decision topics get appropriate suggestions
+  - Verify Generate Project button appears at 80%
+- technical debt
+  - Could add more sophisticated domain detection beyond LLM prompt examples
+  - Consider adding explicit domain classification in topic stage
+- limitations
+  - Contextual awareness depends on LLM following prompt examples correctly
+
+---
+
+# v2.0.4 - 2026-03-20 20:02
+
+## Summary
+Fixed conversation looping back to earlier stages after reaching the review stage, preventing users from generating projects.
+
+## Files Modified
+- `backend/app/services/conversation.py` — modified
+  - Change: Added stage lock to prevent regression from review stage
+  - Reason: After reaching 100% completeness and review stage, LLM was transitioning back to "decision_makers" or other earlier stages, creating an infinite loop
+  - Change: Improved review stage prompt with explicit instructions to stay in final stage
+  - Reason: LLM needed clearer guidance that review is the terminal stage and should not transition elsewhere
+
+## Changes
+- fixed: Conversation no longer loops back to earlier stages after reaching review
+- fixed: Users can now successfully stay in review stage and click "Generate Project"
+- improved: Review stage prompt explicitly states it's the final stage and should not regress
+
+## Impact
+- user-visible impact: Conversation flow completes properly and allows project generation
+- technical impact: Stage transition logic now enforces forward-only progression with review as terminal state
+- risks or side effects: None - review stage is intentionally terminal
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires testing that conversation stays in review stage after reaching 100%
+
+## Follow-up
+- remaining work
+  - Test conversation reaches review and stays there
+  - Verify "Generate Project" button works from review stage
+  - Confirm no more stage regression loops
+- technical debt
+  - Consider adding explicit stage transition rules/state machine
+  - LLM prompts could be more structured to prevent stage confusion
+- limitations
+  - Users cannot go back to edit earlier stages once in review (by design)
+
+---
+
+# v2.0.3 - 2026-03-20 19:57
+
+## Summary
+Fixed multiple Pydantic validation errors caused by LLM returning inconsistent data types (strings instead of lists/dicts) and corrected ProjectResponse attribute access.
+
+## Files Modified
+- `backend/app/services/conversation.py` — modified
+  - Change: Enhanced `_clean_context_for_validation` to handle type mismatches from LLM responses
+  - Reason: LLM was returning strings for `decision_makers` and `goals` (expected lists), and string items in `agents` array (expected dict objects)
+  - Change: Convert string `decision_makers` to single-item list
+  - Reason: Pydantic expects `decision_makers: list[str]` but LLM sometimes returns `"Family"` instead of `["Family"]`
+  - Change: Convert string `goals` to single-item list
+  - Reason: Pydantic expects `goals: list[str]` but LLM sometimes returns `"make the best decision"` instead of `["make the best decision"]`
+  - Change: Filter out string items from `agents` list, keep only dict items
+  - Reason: LLM sometimes appends agent names as strings instead of proper `{name, role, confirmed}` objects
+  - Change: Fixed `project.id` → `project.project_id`
+  - Reason: `ProjectResponse` schema has `project_id` attribute, not `id`
+
+## Changes
+- fixed: Conversation no longer crashes when LLM returns strings instead of lists for decision_makers/goals
+- fixed: Conversation no longer crashes when LLM adds string agent names instead of dict objects
+- fixed: Project generation no longer crashes with AttributeError on `project.id`
+- improved: Validation cleaning is now more robust to LLM output variations
+
+## Impact
+- user-visible impact: Conversation flow works reliably even when LLM returns inconsistent data types
+- technical impact: Validation layer now handles common LLM output format variations gracefully
+- risks or side effects: String agent items are silently dropped (but this is better than crashing)
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires full conversation flow test with project generation
+
+## Follow-up
+- remaining work
+  - Test complete conversation → generation flow
+  - Verify all collected context is properly used in project generation
+  - Confirm generated project appears correctly in review screen
+- technical debt
+  - LLM prompts should be improved to return consistent data types
+  - Consider adding Pydantic validators that auto-convert types instead of cleaning post-hoc
+- limitations
+  - String agent items are discarded rather than converted to proper dict format
+
+---
+
+# v2.0.2 - 2026-03-20 19:52
+
+## Summary
+Fixed project generation from conversation failing due to incorrect ProjectService.generate_project() signature usage.
+
+## Files Modified
+- `backend/app/services/conversation.py` — modified
+  - Change: Updated `generate_project_from_conversation` to use `ProjectGenerationRequest` object instead of passing `prompt` and `clarification_answers` as separate kwargs
+  - Reason: `ProjectService.generate_project()` expects a `request: ProjectGenerationRequest` parameter, not individual prompt/answers arguments
+  - Change: Added `force_generate_with_assumptions=True` to skip re-assessment
+  - Reason: Conversation has already gone through assessment stages, no need to re-assess during generation
+
+## Changes
+- fixed: "Generate Project" button now successfully creates projects from completed conversations
+- fixed: TypeError "got an unexpected keyword argument 'prompt'" no longer occurs
+
+## Impact
+- user-visible impact: Users can now complete the full conversation flow and generate projects
+- technical impact: Conversation service now correctly interfaces with existing project generation logic
+- risks or side effects: None - aligns with existing project generation contract
+- breaking changes if any: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not applicable (Python service)
+- manual verification: Pending - requires testing "Generate Project" button after completing conversation
+
+## Follow-up
+- remaining work
+  - Test full conversation → generation flow
+  - Verify generated project appears in review screen
+  - Confirm agents/flow from conversation are correctly applied
+- technical debt
+  - Conversation context → prompt conversion could be more sophisticated
+- limitations
+  - Still requires valid Gemini API key for project generation
+
+---
+
 # v2.0.1 - 2026-03-20 19:25
 
 ## Summary

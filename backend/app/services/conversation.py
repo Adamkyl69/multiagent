@@ -76,7 +76,7 @@ class ConversationService:
             session_id=conv_session.id,
             message=self._to_message_response(system_msg),
             context=CollectedContext(**self._clean_context_for_validation(updated_context)),
-            can_generate=updated_context.get("completeness", 0) >= 100,
+            can_generate=updated_context.get("completeness", 0) >= 80,
         )
 
     async def send_message(
@@ -113,7 +113,10 @@ class ConversationService:
         next_stage = llm_result.next_stage if llm_result.stage_complete else current_stage
         updated_context = self._update_stage_tracking(updated_context, current_stage, next_stage)
         
-        if llm_result.stage_complete and llm_result.next_stage:
+        # Prevent stage regression - once we reach review, stay there
+        if current_stage == "review":
+            updated_context["stage"] = "review"
+        elif llm_result.stage_complete and llm_result.next_stage:
             updated_context["stage"] = llm_result.next_stage
         
         updated_context["completeness"] = self._calculate_completeness(updated_context)
@@ -136,7 +139,7 @@ class ConversationService:
             session_id=session_id,
             message=self._to_message_response(system_msg),
             context=CollectedContext(**self._clean_context_for_validation(updated_context)),
-            can_generate=updated_context.get("completeness", 0) >= 100,
+            can_generate=updated_context.get("completeness", 0) >= 80,
         )
 
     async def get_conversation(
@@ -163,7 +166,7 @@ class ConversationService:
             status=conv_session.status,
             messages=[self._to_message_response(msg) for msg in messages],
             context=CollectedContext(**self._clean_context_for_validation(context)),
-            can_generate=context.get("completeness", 0) >= 100,
+            can_generate=context.get("completeness", 0) >= 80,
         )
 
     async def generate_project_from_conversation(
@@ -173,6 +176,8 @@ class ConversationService:
         workspace_id: str,
         user_id: str,
     ) -> Any:
+        from app.schemas import ProjectGenerationRequest
+        
         conv_session = await session.scalar(
             select(ConversationSession).where(ConversationSession.id == session_id)
         )
@@ -181,21 +186,26 @@ class ConversationService:
 
         context = conv_session.collected_context or {}
         
-        if context.get("completeness", 0) < 100:
-            raise ValueError("Conversation not complete enough to generate project")
+        if context.get("completeness", 0) < 80:
+            raise ValueError("Conversation not complete enough to generate project (need at least 80%)")
 
         prompt = self._build_prompt_from_context(context)
         clarification_answers = self._build_clarification_answers(context)
+
+        request = ProjectGenerationRequest(
+            prompt=prompt,
+            clarification_answers=clarification_answers,
+            force_generate_with_assumptions=True,
+        )
 
         project = await self.project_service.generate_project(
             session=session,
             workspace_id=workspace_id,
             user_id=user_id,
-            prompt=prompt,
-            clarification_answers=clarification_answers,
+            request=request,
         )
 
-        conv_session.project_id = project.id
+        conv_session.project_id = project.project_id
         conv_session.status = "completed"
         await session.commit()
 
@@ -276,16 +286,25 @@ Respond in JSON format:
 
 CURRENT STAGE: Decision Makers
 
+IMPORTANT: Be contextually aware of the topic domain. Adapt your questions and suggestions accordingly.
+
+Examples:
+- Personal/family decision (car purchase, home buying, education) → Suggest: Individual, Family, Couple, Parent
+- Business decision (market expansion, product launch) → Suggest: CEO, Board, Executive Team, Product Team
+- Technical decision (architecture, framework) → Suggest: Tech Lead, Engineering Team, CTO, Architects
+
+Look at the topic and provide APPROPRIATE decision maker options.
+
 Extract information about who will be making the decision:
-- Decision maker roles (CEO, team, individual, board, etc.)
-- Organizational context if mentioned
+- Decision maker roles appropriate to the topic domain
+- Personal vs professional context
 
 Then ask: "What's driving this decision? Any specific goals or constraints?"
 
 Respond in JSON format:
 {
   "extracted_info": {
-    "decision_makers": ["role1", "role2"]
+    "decision_makers": ["contextually appropriate role"]
   },
   "next_question": "What's driving this decision? Any specific goals or constraints?",
   "quick_replies": null,
@@ -384,16 +403,24 @@ Respond in JSON format:
     def _get_review_prompt(self) -> str:
         return """You are a debate project assistant helping users configure multi-agent debates.
 
-CURRENT STAGE: Review
+CURRENT STAGE: Review (FINAL STAGE - DO NOT MOVE TO OTHER STAGES)
 
-The user is reviewing the setup. If they want to generate, confirm.
-If they want to refine, ask what to change.
+CRITICAL: The conversation is COMPLETE. You are in the final review stage.
+DO NOT ask about decision makers, constraints, or other earlier topics.
+DO NOT transition to any other stage.
+
+The user can only:
+1. Confirm and generate the project (respond with encouragement to click "Generate Project" button)
+2. Request refinements to specific aspects (agents, flow, constraints)
+
+If user confirms/agrees/says yes → Tell them to click the "Generate Project" button
+If user wants to refine → Ask what specific aspect they want to change
 
 Respond in JSON format:
 {
   "extracted_info": {},
-  "next_question": "What would you like to refine?",
-  "quick_replies": ["Agents", "Flow", "Constraints", "Generate Now"],
+  "next_question": "Great! The debate is ready. Click the 'Generate Project' button to create it.",
+  "quick_replies": null,
   "stage_complete": false,
   "next_stage": null
 }"""
@@ -439,6 +466,29 @@ Respond in JSON format:
                 else:
                     cleaned_constraints[k] = v
             cleaned["constraints"] = cleaned_constraints
+        
+        # Clean decision_makers - ensure it's a list
+        if "decision_makers" in cleaned:
+            if isinstance(cleaned["decision_makers"], str):
+                cleaned["decision_makers"] = [cleaned["decision_makers"]]
+            elif not isinstance(cleaned["decision_makers"], list):
+                cleaned["decision_makers"] = []
+        
+        # Clean goals - ensure it's a list
+        if "goals" in cleaned:
+            if isinstance(cleaned["goals"], str):
+                cleaned["goals"] = [cleaned["goals"]]
+            elif not isinstance(cleaned["goals"], list):
+                cleaned["goals"] = []
+        
+        # Clean agents - ensure all items are dicts, filter out strings
+        if "agents" in cleaned and isinstance(cleaned["agents"], list):
+            cleaned_agents = []
+            for agent in cleaned["agents"]:
+                if isinstance(agent, dict):
+                    cleaned_agents.append(agent)
+                # Skip string items - they're invalid
+            cleaned["agents"] = cleaned_agents
         
         # Remove internal tracking fields from validation
         cleaned.pop("_stage_message_count", None)
