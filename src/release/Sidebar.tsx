@@ -16,7 +16,7 @@ import {
   MessageSquare,
   Zap,
   Play,
-  MoreVertical,
+  MoreHorizontal,
   Edit2,
   Trash2,
 } from 'lucide-react';
@@ -433,8 +433,18 @@ export default function Sidebar({
                         borderRadius: 4,
                         transition: 'background 0.12s',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                      onMouseEnter={e => { 
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                        // Show the three-dot button on hover
+                        const button = e.currentTarget.querySelector('.three-dot-button');
+                        if (button) button.style.opacity = '1';
+                      }}
+                      onMouseLeave={e => { 
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        // Hide the three-dot button when not hovering
+                        const button = e.currentTarget.querySelector('.three-dot-button');
+                        if (button) button.style.opacity = '0';
+                      }}
                     >
                       {isEditing ? (
                         <input
@@ -478,6 +488,7 @@ export default function Sidebar({
                             {item.title}
                           </div>
                           <button
+                            className="three-dot-button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setOpenMenuId(menuOpen ? null : item.id);
@@ -491,11 +502,13 @@ export default function Sidebar({
                               display: 'flex',
                               alignItems: 'center',
                               borderRadius: 3,
+                              opacity: 0, // Hidden by default
+                              transition: 'opacity 0.12s',
                             }}
                             onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.9)'; }}
                             onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
                           >
-                            <MoreVertical size={14} />
+                            <MoreHorizontal size={14} />
                           </button>
                         </>
                       )}
@@ -687,8 +700,18 @@ export default function Sidebar({
                           borderRadius: 4,
                           transition: 'background 0.12s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                        onMouseEnter={e => { 
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                          // Show the three-dot button on hover
+                          const button = e.currentTarget.querySelector('.three-dot-button');
+                          if (button) button.style.opacity = '1';
+                        }}
+                        onMouseLeave={e => { 
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                          // Hide the three-dot button when not hovering
+                          const button = e.currentTarget.querySelector('.three-dot-button');
+                          if (button) button.style.opacity = '0';
+                        }}
                       >
                         {isEditing ? (
                           <input
@@ -732,6 +755,7 @@ export default function Sidebar({
                               {item.project_title}
                             </div>
                             <button
+                              className="three-dot-button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenMenuId(menuOpen ? null : item.run_id);
@@ -745,11 +769,13 @@ export default function Sidebar({
                                 display: 'flex',
                                 alignItems: 'center',
                                 borderRadius: 3,
+                                opacity: 0, // Hidden by default
+                                transition: 'opacity 0.12s',
                               }}
                               onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.9)'; }}
                               onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
                             >
-                              <MoreVertical size={14} />
+                              <MoreHorizontal size={14} />
                             </button>
                           </>
                         )}
