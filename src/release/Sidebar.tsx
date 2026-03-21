@@ -506,19 +506,19 @@ export default function Sidebar({
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
-                        padding: '6px 8px',
-                        background: 'rgba(255,255,255,0.03)',
-                        borderRadius: 4,
-                        transition: 'background 0.12s',
+                        padding: '7px 10px',
+                        background: 'transparent',
+                        borderRadius: 7,
+                        transition: 'background 180ms',
                       }}
                       onMouseEnter={e => { 
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
                         // Show the three-dot button on hover
                         const button = e.currentTarget.querySelector('.three-dot-button');
                         if (button) button.style.opacity = '1';
                       }}
                       onMouseLeave={e => { 
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        e.currentTarget.style.background = 'transparent';
                         // Hide the three-dot button when not hovering
                         const button = e.currentTarget.querySelector('.three-dot-button');
                         if (button) button.style.opacity = '0';
@@ -779,19 +779,19 @@ export default function Sidebar({
                           display: 'flex',
                           alignItems: 'center',
                           gap: 8,
-                          padding: '6px 8px',
-                          background: 'rgba(255,255,255,0.03)',
-                          borderRadius: 4,
-                          transition: 'background 0.12s',
+                          padding: '7px 10px',
+                          background: 'transparent',
+                          borderRadius: 7,
+                          transition: 'background 180ms',
                         }}
                         onMouseEnter={e => { 
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
                           // Show the three-dot button on hover
                           const button = e.currentTarget.querySelector('.three-dot-button');
                           if (button) button.style.opacity = '1';
                         }}
                         onMouseLeave={e => { 
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                          e.currentTarget.style.background = 'transparent';
                           // Hide the three-dot button when not hovering
                           const button = e.currentTarget.querySelector('.three-dot-button');
                           if (button) button.style.opacity = '0';
