@@ -516,12 +516,18 @@ export default function Sidebar({
                         // Show the three-dot button on hover
                         const button = e.currentTarget.querySelector('.three-dot-button');
                         if (button) button.style.opacity = '1';
+                        // Change text color to bright white
+                        const title = e.currentTarget.querySelector('.session-title');
+                        if (title) (title as HTMLElement).style.color = '#F1F5F9';
                       }}
                       onMouseLeave={e => { 
                         e.currentTarget.style.background = 'transparent';
                         // Hide the three-dot button when not hovering
                         const button = e.currentTarget.querySelector('.three-dot-button');
                         if (button) button.style.opacity = '0';
+                        // Reset text color
+                        const title = e.currentTarget.querySelector('.session-title');
+                        if (title) (title as HTMLElement).style.color = '#64748B';
                       }}
                     >
                       {isEditing ? (
@@ -560,6 +566,7 @@ export default function Sidebar({
                           }} />
                           <div
                             onClick={() => !isResuming && handleResumeItem(item)}
+                            className="session-title"
                             style={{
                               flex: 1,
                               minWidth: 0,
@@ -570,6 +577,7 @@ export default function Sidebar({
                               fontSize: 12.5,
                               fontWeight: 400,
                               color: '#64748B',
+                              transition: 'color 180ms',
                             }}
                           >
                             {item.title}
@@ -789,12 +797,18 @@ export default function Sidebar({
                           // Show the three-dot button on hover
                           const button = e.currentTarget.querySelector('.three-dot-button');
                           if (button) button.style.opacity = '1';
+                          // Change text color to bright white
+                          const title = e.currentTarget.querySelector('.session-title');
+                          if (title) (title as HTMLElement).style.color = '#F1F5F9';
                         }}
                         onMouseLeave={e => { 
                           e.currentTarget.style.background = 'transparent';
                           // Hide the three-dot button when not hovering
                           const button = e.currentTarget.querySelector('.three-dot-button');
                           if (button) button.style.opacity = '0';
+                          // Reset text color
+                          const title = e.currentTarget.querySelector('.session-title');
+                          if (title) (title as HTMLElement).style.color = '#64748B';
                         }}
                       >
                         {isEditing ? (
@@ -833,6 +847,7 @@ export default function Sidebar({
                             }} />
                             <div
                               onClick={() => !isResuming && handleResumeCompleted(item)}
+                              className="session-title"
                               style={{
                                 flex: 1,
                                 minWidth: 0,
@@ -843,6 +858,7 @@ export default function Sidebar({
                                 fontSize: 12.5,
                                 fontWeight: 400,
                                 color: '#64748B',
+                                transition: 'color 180ms',
                               }}
                             >
                               {item.project_title}
