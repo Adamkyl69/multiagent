@@ -1,0 +1,72 @@
+/* Design System - Based on samplepage.html */
+
+:root {
+  /* Colors */
+  --bg-base: #06080F;
+  --bg-surface: #0B0E1A;
+  --bg-panel: rgba(255,255,255,0.035);
+  --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+  --text-primary: #F1F5F9;
+  --text-muted: #64748B;
+  --text-dim: #475569;
+  --accent-orange: #F97316;
+  --accent-indigo: #6366F1;
+  --accent-cyan: #22D3EE;
+  --accent-green: #4ADE80;
+  --glow-orange: rgba(249,115,22,0.25);
+  --glow-indigo: rgba(99,102,241,0.2);
+  
+  /* Typography */
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+/* Global Styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+/* Glass Effect */
+.glass {
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.07);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}

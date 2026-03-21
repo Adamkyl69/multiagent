@@ -117,9 +117,9 @@ export default function Sidebar({
   const [editingTitle, setEditingTitle] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ id: string; type: string; title: string } | null>(null);
 
-  const sidebarBg = '#5B7E91';
-  const activeBg = 'rgba(255,255,255,0.12)';
-  const hoverBg = 'rgba(255,255,255,0.07)';
+  const sidebarBg = 'rgba(6,8,15,0.8)';
+  const activeBg = 'rgba(99,102,241,0.12)';
+  const hoverBg = 'rgba(255,255,255,0.05)';
 
   useEffect(() => {
     loadInProgressSessions();
@@ -289,6 +289,8 @@ export default function Sidebar({
         width: collapsed ? 64 : 240,
         minWidth: collapsed ? 64 : 240,
         background: sidebarBg,
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
@@ -297,28 +299,72 @@ export default function Sidebar({
         transition: 'width 0.2s ease, min-width 0.2s ease',
         overflow: 'hidden',
         zIndex: 30,
+        borderRight: '1px solid rgba(255,255,255,0.07)',
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: collapsed ? '20px 0' : '20px 20px 12px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          borderBottom: '1px solid rgba(255,255,255,0.12)',
-          minHeight: 72,
+          padding: collapsed ? '20px 0' : '20px 16px 20px 16px',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
         }}
       >
         {!collapsed && (
-          <div style={{ overflow: 'hidden' }}>
-            <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
-              Decision Intelligence
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              {/* Brand Icon */}
+              <div style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #6366F1, #F97316)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
+                  <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+                  <path d="M12 7v4m0 0-4.5 6M12 11l4.5 6M7 18h10"/>
+                </svg>
+              </div>
+              {/* Brand Name */}
+              <span style={{
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: 14,
+                fontWeight: 600,
+                color: '#F1F5F9',
+                letterSpacing: '0.01em',
+              }}>
+                Decision Intelligence
+              </span>
             </div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.18em', fontWeight: 700, marginTop: 2, whiteSpace: 'nowrap' }}>
-              {workspaceLabel ?? 'MULTI-AGENT DEBATOR'}
+            {/* Workspace Badge */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              marginLeft: 40,
+              fontSize: 10.5,
+              color: '#64748B',
+              letterSpacing: '0.02em',
+            }}>
+              <span>{workspaceLabel ?? 'Dev Workspace'}</span>
+              <span style={{
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                padding: '2px 7px',
+                borderRadius: 20,
+                background: 'rgba(249,115,22,0.15)',
+                color: '#FB923C',
+                border: '1px solid rgba(249,115,22,0.25)',
+              }}>
+                Trial
+              </span>
             </div>
-          </div>
+          </>
         )}
         <button
           onClick={onToggle}
@@ -342,37 +388,48 @@ export default function Sidebar({
       </div>
 
       {/* New Decision button */}
-      <div style={{ padding: collapsed ? '14px 10px' : '14px 16px' }}>
+      <div style={{ padding: collapsed ? '14px 10px' : '16px 16px 0' }}>
         <button
           onClick={onNewDecision}
           style={{
-            background: '#CC5500',
+            background: 'linear-gradient(135deg, #EA580C, #F97316)',
             border: 'none',
-            borderRadius: 8,
+            borderRadius: 10,
             color: '#fff',
             cursor: 'pointer',
-            fontWeight: 700,
-            fontSize: 12,
-            letterSpacing: '0.06em',
+            fontFamily: 'Space Grotesk, sans-serif',
+            fontWeight: 600,
+            fontSize: 12.5,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
+            justifyContent: 'center',
             gap: 8,
-            padding: collapsed ? '10px' : '11px 14px',
+            padding: collapsed ? '10px' : '10px 16px',
             width: '100%',
-            transition: 'background 0.15s',
+            transition: 'all 200ms',
+            boxShadow: '0 4px 20px rgba(249,115,22,0.3), 0 1px 3px rgba(0,0,0,0.4)',
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#b34a00')}
-          onMouseLeave={e => (e.currentTarget.style.background = '#CC5500')}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 6px 28px rgba(249,115,22,0.45), 0 2px 6px rgba(0,0,0,0.4)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(249,115,22,0.3), 0 1px 3px rgba(0,0,0,0.4)';
+          }}
           title="New Decision"
         >
-          <PlusCircle size={16} />
-          {!collapsed && 'NEW DECISION'}
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          {!collapsed && 'New Decision'}
         </button>
       </div>
 
       {/* Nav items */}
-      <nav style={{ flex: 1, overflow: 'hidden auto', padding: collapsed ? '4px 6px' : '4px 10px' }}>
+      <nav style={{ flex: 1, overflow: 'hidden auto', padding: collapsed ? '4px 6px' : '16px 16px 0' }}>
         {NAV_ITEMS.filter(item => item.id !== 'in-progress' && item.id !== 'completed').map(({ id, label, Icon }) => {
           const isActive = activeView === id;
           
@@ -386,24 +443,33 @@ export default function Sidebar({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                padding: collapsed ? '10px' : '10px 12px',
+                padding: collapsed ? '10px' : '8px 10px',
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                background: isActive ? activeBg : 'transparent',
-                border: 'none',
-                borderLeft: isActive ? '3px solid #CC5500' : '3px solid transparent',
-                borderRadius: isActive ? '0 6px 6px 0' : 6,
-                color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
+                background: isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
+                border: isActive ? '1px solid rgba(99,102,241,0.2)' : 'none',
+                borderRadius: 8,
+                color: isActive ? '#A5B4FC' : '#475569',
                 cursor: 'pointer',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.1em',
+                fontSize: 13,
+                fontWeight: 500,
+                letterSpacing: '0.02em',
                 marginBottom: 2,
-                transition: 'background 0.12s, color 0.12s',
+                transition: 'all 180ms',
               }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = hoverBg; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={e => { 
+                if (!isActive) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.color = '#F1F5F9';
+                }
+              }}
+              onMouseLeave={e => { 
+                if (!isActive) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#475569';
+                }
+              }}
             >
-              <Icon size={16} strokeWidth={isActive ? 2.5 : 1.8} />
+              <Icon size={15} strokeWidth={1.8} />
               {!collapsed && label}
             </button>
           );
@@ -483,6 +549,15 @@ export default function Sidebar({
                         />
                       ) : (
                         <>
+                          {/* Status Dot */}
+                          <div style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: '50%',
+                            background: '#22D3EE',
+                            boxShadow: '0 0 6px rgba(34,211,238,0.6)',
+                            flexShrink: 0,
+                          }} />
                           <div
                             onClick={() => !isResuming && handleResumeItem(item)}
                             style={{
@@ -492,9 +567,9 @@ export default function Sidebar({
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                               cursor: isResuming ? 'not-allowed' : 'pointer',
-                              fontSize: 11,
-                              fontWeight: 500,
-                              color: 'rgba(255,255,255,0.85)',
+                              fontSize: 12.5,
+                              fontWeight: 400,
+                              color: '#64748B',
                             }}
                           >
                             {item.title}
@@ -747,6 +822,15 @@ export default function Sidebar({
                           />
                         ) : (
                           <>
+                            {/* Status Dot - Green for completed */}
+                            <div style={{
+                              width: 5,
+                              height: 5,
+                              borderRadius: '50%',
+                              background: '#4ADE80',
+                              boxShadow: '0 0 6px rgba(74,222,128,0.5)',
+                              flexShrink: 0,
+                            }} />
                             <div
                               onClick={() => !isResuming && handleResumeCompleted(item)}
                               style={{
@@ -756,9 +840,9 @@ export default function Sidebar({
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
                                 cursor: isResuming ? 'not-allowed' : 'pointer',
-                                fontSize: 11,
-                                fontWeight: 500,
-                                color: 'rgba(255,255,255,0.85)',
+                                fontSize: 12.5,
+                                fontWeight: 400,
+                                color: '#64748B',
                               }}
                             >
                               {item.project_title}
