@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Loader2, LogOut } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import AuthScreen from './AuthScreen';
 import ChatInterface from './ChatInterface';
 import ProjectReviewScreen from './ProjectReviewScreen';
 import RunScreen from './RunScreen';
+import Sidebar from './Sidebar';
+import type { NavView, RecentSession } from './Sidebar';
 import { getMe } from './api';
 import type { AuthMeResponse, ProjectResponse, RunResponse } from './types';
 
@@ -17,10 +19,13 @@ export default function ReleaseApp() {
   const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [run, setRun] = useState<RunResponse | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeView, setActiveView] = useState<NavView>('dashboard');
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [resumeSessionId, setResumeSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
-      // Dev mode: bypass auth when Supabase is not configured
       setSession({ access_token: 'dev-token', user: { id: 'dev-user', email: 'dev@example.com' } } as any);
       setLoading(false);
       return;
@@ -29,9 +34,7 @@ export default function ReleaseApp() {
     let mounted = true;
 
     supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       if (sessionError) {
         setError(sessionError.message);
         setLoading(false);
@@ -64,7 +67,6 @@ export default function ReleaseApp() {
         setMe(profile);
         setError(null);
       } catch (caught) {
-        // In dev mode, create a fake profile if backend auth fails
         if (!supabase && session.access_token === 'dev-token') {
           setMe({
             user_id: 'dev-user',
@@ -79,15 +81,26 @@ export default function ReleaseApp() {
         }
       }
     }
-
     syncProfile();
   }, [session?.access_token]);
 
+  // Track recent sessions when a project is generated or a run is launched
+  useEffect(() => {
+    if (project) {
+      setRecentSessions((prev) => {
+        const status: RecentSession['status'] = run
+          ? run.status === 'running' || run.status === 'queued' ? 'running' : run.status === 'completed' ? 'completed' : 'failed'
+          : 'framed';
+        const next: RecentSession = { id: project.project_id, title: project.title, status };
+        const filtered = prev.filter((s) => s.id !== project.project_id);
+        return [next, ...filtered].slice(0, 5);
+      });
+    }
+  }, [project, run?.status]);
+
   const token = session?.access_token ?? null;
   const workspaceLabel = useMemo(() => {
-    if (!me) {
-      return null;
-    }
+    if (!me) return undefined;
     return `${me.workspace_name} · ${me.plan_code}`;
   }, [me]);
 
@@ -98,11 +111,39 @@ export default function ReleaseApp() {
     setRun(null);
   }
 
+  function handleNewDecision() {
+    setProject(null);
+    setRun(null);
+    setResumeSessionId(null);
+    setActiveView('dashboard');
+  }
+
+  function handleResumeConversation(sessionId: string) {
+    setProject(null);
+    setRun(null);
+    setResumeSessionId(sessionId);
+    setActiveView('dashboard');
+  }
+
+  function handleResumeProject(p: ProjectResponse) {
+    setRun(null);
+    setProject(p);
+    setResumeSessionId(null);
+    setActiveView('in-progress');
+  }
+
+  function handleResumeRun(p: ProjectResponse, r: RunResponse) {
+    setProject(p);
+    setRun(r);
+    setResumeSessionId(null);
+    setActiveView('in-progress');
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center gap-3">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        Loading session...
+      <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <Loader2 style={{ width: 20, height: 20, animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontSize: 14, color: '#9E9E9E' }}>Loading session...</span>
       </div>
     );
   }
@@ -112,32 +153,44 @@ export default function ReleaseApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-slate-900 bg-slate-950/90 backdrop-blur sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-[0.25em] text-indigo-300">Multi-Agent Debator</div>
-            <div className="text-sm text-slate-400 mt-1">{workspaceLabel ?? 'Authenticating workspace...'}</div>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#111827' }}>
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+        activeView={activeView}
+        onNavChange={setActiveView}
+        onNewDecision={handleNewDecision}
+        onSignOut={handleSignOut}
+        email={me?.email}
+        workspaceLabel={workspaceLabel}
+        recentSessions={recentSessions}
+        token={token}
+        onResumeConversation={handleResumeConversation}
+        onResumeProject={handleResumeProject}
+        onResumeRun={handleResumeRun}
+      />
+
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        {error && (
+          <div style={{ margin: '16px 24px 0', borderRadius: 10, border: '1px solid rgba(224,82,82,0.3)', background: 'rgba(224,82,82,0.08)', padding: '10px 16px', fontSize: 13, color: '#fca5a5' }}>
+            {error}
           </div>
-          <div className="flex items-center gap-3">
-            {me?.email ? <div className="text-sm text-slate-400">{me.email}</div> : null}
-            <button onClick={handleSignOut} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold hover:border-indigo-500 inline-flex items-center gap-2">
-              <LogOut className="w-4 h-4" />
-              Sign out
-            </button>
-          </div>
+        )}
+
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {project && run ? (
+            <RunScreen token={token} project={project} initialRun={run} onBack={() => setRun(null)} />
+          ) : project ? (
+            <ProjectReviewScreen token={token} project={project} onBack={handleNewDecision} onProjectUpdated={setProject} onRunLaunched={setRun} />
+          ) : (
+            <ChatInterface
+              token={token}
+              resumeSessionId={resumeSessionId}
+              onProjectGenerated={(p) => { setProject(p); setResumeSessionId(null); }}
+            />
+          )}
         </div>
-      </header>
-
-      {error ? <div className="max-w-7xl mx-auto px-6 pt-6"><div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div></div> : null}
-
-      {!project ? (
-        <ChatInterface token={token} onProjectGenerated={setProject} />
-      ) : run ? (
-        <RunScreen token={token} project={project} initialRun={run} onBack={() => setRun(null)} />
-      ) : (
-        <ProjectReviewScreen token={token} project={project} onBack={() => setProject(null)} onProjectUpdated={setProject} onRunLaunched={setRun} />
-      )}
+      </main>
     </div>
   );
 }

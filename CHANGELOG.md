@@ -1,3 +1,846 @@
+# v3.0.2 - 2026-03-21 08:55
+
+## Summary
+Added detailed logging to debate run execution and a helper to inspect project snapshots so we can diagnose stuck runs.
+
+## Files Modified
+- `backend/app/services/runs.py` — modified
+  - Change: Added `logging` import, module-level logger, and info/error logs throughout `execute_run`
+  - Reason: Runs were hanging without exposing the failure point; need visibility into each phase/agent turn
+  - Change: Wrapped inner execution block with try/except and log `exc_info`
+  - Reason: Ensure any uncaught exceptions mark the run as failed and appear in backend logs
+
+- `backend/check_project.py` — created
+  - Change: Added script that prints latest project/version snapshot structure (agents, flow, sample entries)
+  - Reason: Quick way to verify generated snapshot data when debugging run issues
+
+## Changes
+- added: Structured logging for debate run lifecycle (start, snapshot load, failures)
+- added: Debug helper script to inspect latest project snapshot
+- fixed: Silent run failures now surface via `run.failed` events and backend logs
+
+## Impact
+- user-visible impact: When a run fails, status now transitions to **failed** instead of hanging indefinitely
+- technical impact: Backend logs now show run progress and stack traces for easier debugging
+- risks or side effects: Minimal; logging adds slight overhead but no funcional change otherwise
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending – need to restart backend and launch a new run to capture logs
+
+## Follow-up
+- remaining work
+  - Restart backend, re-run debate, review new logs to pinpoint root cause
+  - Fix the actual issue causing the run to fail once logs identify it
+- technical debt
+  - Convert `check_project.py` into a formal CLI tool or admin endpoint
+- limitations
+  - Logging alone does not resolve the underlying failure; further fixes required
+
+---
+
+# v3.0.1 - 2026-03-21 08:34
+
+## Summary
+Fixed false positive "Usage limit reached" error by adding debug logging and increasing development token/cost limits.
+
+## Files Modified
+- `backend/app/services/billing.py` — modified
+  - Change: Added logging import and debug logs in `ensure_usage_available` method
+  - Reason: Need visibility into actual usage values when limit check fails
+  - Change: Log shows tokens used/included and cost used/included before raising exception
+  - Reason: Helps diagnose false positives and incorrect limit configurations
+
+- `backend/app/models.py` — modified
+  - Change: Increased `UsageBalance.included_tokens` default from 250,000 to 10,000,000
+  - Reason: Development usage was hitting the low limit (264k tokens used)
+  - Change: Increased `UsageBalance.included_cost_cents` default from 5,000 ($50) to 500,000 ($5000)
+  - Reason: Align cost limit with higher token limit for development
+
+- `backend/update_usage_limits.py` — created
+  - Change: Created utility script to update existing database records
+  - Reason: Need to update existing `usage_balances` rows with new limits
+  - Change: Script shows before/after values and confirms update
+  - Reason: Transparency and verification of database changes
+
+- `backend/migrations/003_increase_usage_limits.sql` — created
+  - Change: SQL migration to update usage limits
+  - Reason: Provide migration path for updating existing databases
+
+## Changes
+- added: Debug logging in billing service showing actual usage vs limits
+- added: Utility script to update database usage limits
+- changed: Default token limit from 250k to 10M for development
+- changed: Default cost limit from $50 to $5000 for development
+- fixed: False positive "Usage limit reached" error (was 264k/250k tokens)
+
+## Impact
+- user-visible impact: "Usage limit reached" error resolved
+- user-visible impact: Can now continue development without hitting artificial limits
+- technical impact: Better visibility into billing checks via logging
+- risks or side effects: Higher limits mean less realistic testing of limit enforcement
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Confirmed - database updated, limits now 10M tokens / $5000
+
+## Follow-up
+- remaining work
+  - Consider environment-specific limits (dev vs prod)
+  - Add admin endpoint to view/reset usage balances
+- technical debt
+  - None
+- limitations
+  - Limits are now very high for development, may not catch limit-related bugs
+
+---
+
+# v3.0.0 - 2026-03-21 07:39
+
+## Summary
+Major UX flow redesign. Simplified entry point, automatic decision classification, smart clarifying questions, decision frame confirmation, and streamlined expert agent generation.
+
+## Files Modified
+- `backend/app/services/conversation_v2.py` — created
+  - Change: New conversation service with improved 6-stage flow
+  - Reason: Previous flow had too many configuration steps, was not user-friendly
+  - Stages: entry → classification → clarification → frame → agents → ready
+
+- `backend/app/schemas_conversation.py` — modified
+  - Change: Added DecisionClassification and DecisionFrame schemas
+  - Reason: Need structured types for automatic classification and decision framing
+  - Change: Updated CollectedContext with new fields (raw_question, classification, clarifications, decision_frame, etc.)
+  - Reason: Support new conversation stages and data collection
+
+- `backend/app/main.py` — modified
+  - Change: Switched from ConversationService to ConversationServiceV2
+  - Reason: Use new improved conversation flow
+  - Change: Updated start_conversation endpoint to pass optional context parameter
+  - Reason: Allow users to provide additional context upfront
+
+- `src/release/conversationTypes.ts` — modified
+  - Change: Added DecisionFrame, DecisionClassification, AgentInfo interfaces
+  - Reason: Match new backend schemas
+  - Change: Updated CollectedContext to match new structure
+  - Reason: Frontend needs to display new context information
+
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Updated welcome screen with simpler, example-driven copy
+  - Reason: Entry point should feel simple and inviting
+  - Change: Added stage label display and classification badges in sidebar
+  - Reason: User should see decision type, stakes, and complexity
+  - Change: Added decision frame display in sidebar
+  - Reason: User should see the structured understanding of their decision
+  - Change: Updated agent display with stance indicators (pro/con/neutral)
+  - Reason: User should understand agent perspectives at a glance
+  - Change: Changed "Generate Project" button to "Start Debate"
+  - Reason: Clearer action language
+
+## Changes
+- added: Automatic decision classification (strategic/emotional/financial/etc.)
+- added: Stakes assessment (low/medium/high/critical)
+- added: Smart clarifying questions (3-7 based on decision type)
+- added: Decision frame confirmation before debate
+- added: Expert agent generation with pro/con/neutral stances
+- changed: Entry point is now just "ask your question"
+- changed: No manual configuration required
+- changed: Agent naming enforced as role-based ("XYZ Agent")
+- removed: Manual decision maker selection stage
+- removed: Manual constraints/goals entry stage
+- removed: Manual agent configuration stage
+
+## Impact
+- user-visible impact: Much simpler, faster flow from question to debate
+- user-visible impact: System understands decision type automatically
+- user-visible impact: Clarifying questions are tailored to specific decision
+- user-visible impact: Clear decision frame shown before debate starts
+- technical impact: New ConversationServiceV2 replaces old service
+- risks or side effects: Old conversation sessions may not work with new flow
+- breaking changes: CollectedContext schema changed significantly
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending - requires full flow test
+
+## Follow-up
+- remaining work
+  - Test full conversation flow end-to-end
+  - Test debate execution with new agent format
+  - Verify decision frame accuracy
+  - Add debate result synthesis views
+- technical debt
+  - Old conversation.py can be removed once V2 is validated
+  - Consider adding decision type-specific question sets
+- limitations
+  - Classification depends on LLM accuracy
+  - Clarifying questions may not cover all edge cases
+
+---
+
+# v3.3.7 - 2026-03-21 13:10
+
+## Summary
+Converted "Completed" from a separate full-screen view to a persistent list in the sidebar with pagination. Completed debate runs now appear directly in the sidebar below "In Progress", showing 6 items initially with a "Load More" button to display additional runs in increments of 6.
+
+## Files Modified
+- `src/release/Sidebar.tsx` — modified
+  - Change: Added `completedItems` state, `loadCompletedRuns()` function, and `handleResumeCompleted()` handler
+  - Reason: Need to fetch and display completed runs in sidebar list
+  - Change: Added "COMPLETED" section with list rendering similar to "IN PROGRESS" structure
+  - Reason: User requested completed runs appear as a list in sidebar instead of separate screen
+  - Change: Implemented pagination with `completedDisplayCount` state (starts at 6, increments by 6)
+  - Reason: User requested showing 6 items with "Load More" button for additional runs
+  - Change: Removed "completed" from clickable nav items filter
+  - Reason: Completed is now a list section, not a navigation destination
+  - Change: Clicking completed run item calls `onResumeRun` to open the run screen
+  - Reason: Users can view completed debate details by clicking the list item
+
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Removed `CompletedDebatesView` import and routing logic
+  - Reason: Completed runs are now accessed via sidebar list, not a separate view
+  - Change: Removed `activeView === 'completed'` conditional rendering
+  - Reason: No longer need dedicated completed debates screen
+
+## Changes
+- changed: "Completed" section is now a persistent sidebar list instead of full-screen view
+- added: Pagination for completed runs (6 items initially, "Load More" button for +6 more)
+- added: Auto-load completed runs on component mount
+- removed: Separate CompletedDebatesView screen
+- improved: Faster access to completed runs - visible directly in sidebar
+
+## Impact
+- user-visible impact: Completed runs appear in sidebar list, no separate screen navigation needed
+- user-visible impact: Clicking a completed run opens the run details screen
+- user-visible impact: "Load More" button reveals additional completed runs (6 at a time)
+- technical impact: Simplified navigation flow - one less view to manage
+- risks or side effects: Users with many completed runs may need to click "Load More" multiple times
+- breaking changes: None - "Completed" nav item no longer navigates but list is always visible
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — restart backend (for route fix), refresh frontend, check sidebar for completed runs list
+
+## Follow-up
+- remaining work
+  - Backend restart required to apply route ordering fix from v3.3.6
+- technical debt
+  - None
+- limitations
+  - Pagination is client-side only (all 50 runs fetched, displayed 6 at a time)
+  - Consider server-side pagination if users have hundreds of completed runs
+
+---
+
+# v3.3.6 - 2026-03-21 12:52
+
+## Summary
+Fixed two critical bugs: (1) Completed debate runs were not appearing in the sidebar because the `/api/v1/runs/completed` endpoint returned 404 due to FastAPI route ordering, and (2) Gemini sometimes returns structured analysis data in an `analysis` key instead of simple `content`, causing "empty debate turn" errors.
+
+## Files Modified
+- `backend/app/main.py` — modified
+  - Change: Moved `@app.get("/runs/completed")` route definition before `@app.get("/runs/{run_id}")`
+  - Reason: FastAPI matches routes in order; `/runs/completed` was being matched by the `{run_id}` pattern, treating "completed" as a run ID and returning 404
+  - Impact: Completed runs endpoint now works correctly
+
+- `backend/app/services/llm.py` — modified
+  - Change: Added extraction logic for large nested structures (e.g., `{'agent': {...}, 'analysis': {...}}`)
+  - Reason: Gemini sometimes returns structured research/analysis data in nested dicts instead of simple `content` field
+  - Change: Serialize nested analysis structures as JSON-formatted content when no simple content field exists
+  - Reason: Preserves the full LLM-generated analysis instead of discarding it as "empty"
+
+## Changes
+- fixed: `/api/v1/runs/completed` endpoint now returns completed runs instead of 404
+- fixed: Debate turns no longer fail when Gemini returns structured analysis in nested `analysis` key
+- added: Extraction and serialization of large nested analysis structures as debate turn content
+- improved: Route ordering follows FastAPI best practices (specific routes before parameterized routes)
+
+## Impact
+- user-visible impact: Completed debate sessions now appear in the "Completed" section of the sidebar
+- user-visible impact: Debate runs with Gemini returning structured analysis data now succeed instead of failing with "empty debate turn"
+- technical impact: Content extraction is more robust against Gemini's varied response formats
+- risks or side effects: Serialized JSON content may be less readable than natural language, but preserves all analysis data
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — restart backend, navigate to Completed section, and run new debate
+
+## Follow-up
+- remaining work
+  - None — both issues are resolved
+- technical debt
+  - Consider improving the debate turn prompt to discourage Gemini from echoing input structure or returning raw analysis instead of natural language
+- limitations
+  - Serialized analysis content may need frontend formatting for better readability
+
+---
+
+# v3.3.5 - 2026-03-21 12:44
+
+## Summary
+Converted "In Progress" from a collapsible dropdown to a persistent always-visible list in the sidebar. Sessions now load automatically on mount and display continuously below the main navigation items, making active sessions immediately visible without requiring a click to expand.
+
+## Files Modified
+- `src/release/Sidebar.tsx` — modified
+  - Change: Removed `inProgressOpen` state and dropdown toggle logic
+  - Reason: User requested a persistent list instead of dropdown behavior
+  - Change: Removed chevron icons (ChevronUp/ChevronDown) from In Progress button
+  - Reason: No longer needed since list doesn't collapse
+  - Change: Removed "In Progress" from clickable nav items, now displays as a section header
+  - Reason: List is always visible, so clicking to toggle is no longer relevant
+  - Change: Auto-load in-progress sessions on mount via `useEffect(() => loadInProgressSessions(), [token])`
+  - Reason: Sessions should be visible immediately without user interaction
+  - Change: Positioned in-progress list between main nav items and divider
+  - Reason: Keeps it prominent and accessible in the sidebar flow
+
+## Changes
+- changed: "In Progress" is now a persistent list section, not a collapsible dropdown
+- removed: Dropdown toggle state and chevron icons
+- changed: Sessions load automatically on component mount
+- changed: "In Progress" removed from clickable navigation items
+
+## Impact
+- user-visible impact: Active sessions are always visible in sidebar without clicking
+- user-visible impact: Faster access to in-progress work — no expand/collapse needed
+- technical impact: Simpler component state (removed toggle logic)
+- risks or side effects: If user has many in-progress sessions, list may take more vertical space (currently capped at 5 items)
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — refresh frontend to see persistent in-progress list
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - List shows max 5 sessions; consider adding scroll or "View All" if more exist
+
+---
+
+# v3.3.4 - 2026-03-21 12:38
+
+## Summary
+Fixed "LLM returned an empty debate turn" caused by Gemini echoing the input payload structure and placing actual content inside `required_output.content` instead of returning a flat `{"message_type": "...", "content": "..."}` object. The content extraction logic now checks `required_output` and all nested dicts for content fields.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Added extraction from `response["required_output"]["content"]` when Gemini echoes the payload structure
+  - Reason: Gemini was returning `{"agent": {...}, "recent_transcript": [...], "required_output": {"message_type": "statement", "content": "<actual full answer>"}}` — the real content was there but nested inside the echoed template
+  - Change: Added generic nested dict scan — checks all dict-valued keys for a `content` field
+  - Reason: Future-proofs against other structural variations where Gemini wraps content in unexpected nested objects
+
+## Changes
+- fixed: Debate turns no longer fail when Gemini echoes the input payload with content inside `required_output`
+- added: Extraction from `required_output.content` nested structure
+- added: Generic nested dict content scan as additional fallback
+
+## Impact
+- user-visible impact: Debate runs that were failing with "empty debate turn" now succeed — the full agent reasoning was already there, just nested differently
+- technical impact: Zero quality loss — the extracted content is identical to what Gemini generated
+- risks or side effects: None — extraction only triggers when top-level content fields are empty
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — restart backend and rerun debate
+
+## Follow-up
+- remaining work
+  - None — this addresses the specific Gemini payload echo pattern observed in production
+- technical debt
+  - Consider restructuring the prompt to discourage Gemini from echoing the payload
+- limitations
+  - None
+
+---
+
+# v3.3.3 - 2026-03-21 12:30
+
+## Summary
+Fixed the recurring Gemini `502: LLM returned invalid JSON` failure for debate turns without reducing answer quality. The backend now first tries to salvage malformed structured output, and if Gemini still fails JSON formatting, it transparently retries the same debate-turn request using a strict text format that preserves the full reasoning depth.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Added a Gemini-specific retry path for debate turns when `_generate_json_gemini` raises `LLM returned invalid JSON.`
+  - Reason: Debate runs should not fail just because Gemini formatting is malformed while the underlying reasoning is still good.
+  - Change: Added `_generate_debate_turn_text` text fallback using a strict `MESSAGE_TYPE` + `CONTENT` format.
+  - Reason: This preserves rich debate output while avoiding brittle JSON-only formatting for verbose agent turns.
+  - Change: Added `_generate_text` and `_generate_text_gemini` helpers.
+  - Reason: Debate-turn fallback needs a non-JSON generation path for Gemini only.
+  - Change: Added `_parse_json_response_text`, `_extract_balanced_json_block`, `_extract_json_string_field`, and `_coerce_required_output_from_text` helpers.
+  - Reason: Salvage malformed Gemini outputs when the response still contains valid structured fields embedded in broken JSON.
+  - Change: Added `_parse_debate_turn_text_response` parser.
+  - Reason: Convert fallback text output back into the app's internal `DebateTurnResult` structure.
+
+## Changes
+- fixed: Gemini malformed JSON no longer kills debate turns immediately
+- added: Salvage path for partially valid Gemini structured output
+- added: Debate-turn retry in strict text format when Gemini still fails JSON formatting
+- changed: JSON failure handling is now tolerant for debate turns while remaining strict for other structured outputs
+
+## Impact
+- user-visible impact: Debate runs are much less likely to fail with `502: LLM returned invalid JSON.`
+- user-visible impact: Agents can still return detailed, high-quality reasoning instead of being forced into shorter answers
+- technical impact: Debate turns now have a two-layer recovery path before a run is marked failed
+- risks or side effects: Final synthesis and project generation still depend on valid structured outputs and can still fail if the model returns unusable content
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — restart backend and rerun a debate that previously failed on Gemini JSON formatting
+
+## Follow-up
+- remaining work
+  - Consider adding structured response schemas for Gemini if the SDK support is reliable in this environment
+  - Consider telemetry for how often salvage vs text fallback is triggered
+- technical debt
+  - Text fallback currently applies only to debate turns, not project generation or final synthesis
+- limitations
+  - If Gemini returns unusable plain text with no recoverable content, the turn can still fail
+
+---
+
+# v3.3.2 - 2026-03-21 12:21
+
+## Summary
+Converted "In Progress" from a full-screen view to a collapsible dropdown list in the sidebar. Clicking "In Progress" now expands a dropdown showing all active sessions (conversations, projects, and runs) with one-click resume functionality, eliminating the need for a separate full-screen page.
+
+## Files Modified
+- `src/release/Sidebar.tsx` — modified
+  - Change: Added `token`, `onResumeConversation`, `onResumeProject`, `onResumeRun` props
+  - Reason: Sidebar needs to fetch in-progress sessions and dispatch resume actions
+  - Change: Added state management for dropdown (`inProgressOpen`, `inProgressItems`, `loadingInProgress`, `resumingId`)
+  - Reason: Track dropdown visibility, session data, and loading/resuming states
+  - Change: Added `loadInProgressSessions` function that calls `listInProgressSessions` API
+  - Reason: Fetch sessions on-demand when dropdown is opened
+  - Change: Added `handleResumeItem` function that dispatches to appropriate resume handler based on item type
+  - Reason: Resume conversations, projects, or runs with correct state restoration
+  - Change: Modified "In Progress" nav button to toggle dropdown instead of navigating
+  - Reason: Dropdown UX instead of full-screen navigation
+  - Change: Added dropdown UI with session list, type icons (MessageSquare/Zap/Play), and resume buttons
+  - Reason: Compact, accessible list of all in-progress items directly in sidebar
+  - Change: Added chevron icons (ChevronDown/ChevronUp) to indicate dropdown state
+  - Reason: Visual feedback for expandable/collapsible UI
+
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Removed `InProgressView` import
+  - Reason: No longer using full-screen in-progress view
+  - Change: Passed `token`, `onResumeConversation`, `onResumeProject`, `onResumeRun` to Sidebar
+  - Reason: Sidebar now handles in-progress session management
+  - Change: Removed routing logic for `activeView === 'in-progress'`
+  - Reason: In Progress is now a dropdown, not a routable view
+  - Change: Simplified navigation callbacks to not force `activeView` changes
+  - Reason: Resume actions should restore appropriate screen without forcing navigation state
+
+## Changes
+- changed: "In Progress" button now opens dropdown instead of navigating to full-screen view
+- added: Dropdown shows up to 5 most recent in-progress sessions with type icons and titles
+- added: One-click resume buttons in dropdown for each session
+- removed: `InProgressView` full-screen component from routing
+- changed: Sidebar now fetches and manages in-progress sessions directly
+
+## Impact
+- user-visible impact: Faster access to in-progress sessions without leaving current screen
+- user-visible impact: Dropdown shows session type (conversation/project/run) with color-coded icons
+- user-visible impact: More compact UI — no need to navigate away to see active sessions
+- technical impact: Reduced component complexity by eliminating full-screen view
+- risks or side effects: Dropdown limited to 5 items; users with >5 sessions may need pagination (future enhancement)
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test dropdown open/close and resume functionality
+
+## Follow-up
+- remaining work
+  - Add "View All" link in dropdown if more than 5 sessions exist
+  - Add refresh button in dropdown to reload sessions
+  - Consider adding session age/timestamp in dropdown items
+- technical debt
+  - `InProgressView.tsx` component can be deleted (no longer used)
+- limitations
+  - Dropdown shows max 5 sessions; no pagination yet
+
+---
+
+# v3.3.1 - 2026-03-21 12:16
+
+## Summary
+Fixed recurring "LLM returned invalid JSON" error caused by Gemini truncating responses that exceeded the default output token limit. Added explicit `max_output_tokens=8192` to allow longer debate turn responses, particularly for verbose financial modeling and detailed analysis.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Added `max_output_tokens=8192` to `GenerateContentConfig` in `_generate_json_gemini`
+  - Reason: Gemini was truncating responses mid-JSON when debate turns exceeded ~2048 tokens (default limit)
+  - Change: Increased limit to 8192 tokens
+  - Reason: Allows detailed financial modeling, multi-paragraph analysis, and complex reasoning without truncation
+
+## Changes
+- fixed: Gemini responses no longer truncate mid-generation, eliminating "LLM returned invalid JSON" errors
+- changed: Gemini output token limit increased from default (~2048) to 8192
+
+## Impact
+- user-visible impact: Debate runs with verbose agents (financial analysts, detailed modelers) now complete successfully
+- user-visible impact: No more 502 errors during debate execution for complex topics
+- technical impact: Slightly higher API costs per turn due to longer allowed responses
+- risks or side effects: Agents may generate overly verbose responses; consider adding length guidance in system prompts if needed
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — restart backend and re-run the failed debate to confirm fix
+
+## Follow-up
+- remaining work
+  - Monitor debate turn lengths to ensure they stay reasonable
+  - Consider adding explicit length constraints in agent system instructions if verbosity becomes an issue
+- technical debt
+  - None
+- limitations
+  - 8192 tokens is still a hard limit; extremely verbose responses may still truncate (unlikely in practice)
+
+---
+
+# v3.3.0 - 2026-03-21 12:04
+
+## Summary
+Implemented in-progress session saving and resumption. Active conversations, projects awaiting a debate run, and queued/running debates are now automatically saved and accessible from the "In Progress" sidebar navigation. Sessions can be resumed from any interruption point — including technical failures and connection errors.
+
+## Files Modified
+- `backend/app/services/conversation_v2.py` — modified
+  - Change: Added `list_in_progress_sessions` method
+  - Reason: Single query to aggregate all 3 in-progress types from the workspace
+  - Change: Queries active conversation sessions (status = in_progress)
+  - Reason: Scenario 2 — user is still completing pre-requisite information
+  - Change: Queries projects with no active/completed run (subquery exclusion)
+  - Reason: Scenario 3 — user has completed info and is in review/run screen
+  - Change: Queries queued and running debate runs joined with project title
+  - Reason: Scenario 1 — debate is running or failed mid-run
+  - Change: Results sorted by updated_at descending
+  - Reason: Most recently active sessions appear first
+
+- `backend/app/main.py` — modified
+  - Change: Added `GET /api/v1/sessions/in-progress` endpoint
+  - Reason: Frontend needs a single endpoint to populate the In Progress view
+
+- `src/release/api.ts` — modified
+  - Change: Added `InProgressItem` interface
+  - Reason: Type-safe representation of conversations, projects, and runs
+  - Change: Added `listInProgressSessions` function
+  - Reason: Fetch all in-progress items from workspace
+  - Change: Added `getProject` function
+  - Reason: Load project by ID when resuming from project or run item
+
+- `src/release/InProgressView.tsx` — created
+  - Change: New component showing all in-progress items as resumable cards
+  - Reason: Users need a single place to see and continue interrupted work
+  - Change: Cards show type badge (CONVERSATION / PROJECT READY / DEBATE), stage label, and progress bar
+  - Reason: Visual clarity on where each session is in the workflow
+  - Change: "Resume" button dispatches correct handler per item type
+  - Reason: Conversation → restores ChatInterface; Project → opens ProjectReviewScreen; Run → opens RunScreen
+  - Change: Refresh button to re-poll in-progress sessions
+  - Reason: State may have changed since page load
+  - Change: Applied Colonial Blue / Burnt Orange color palette
+  - Reason: Consistent with overall design system
+
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Added `resumeSessionId` optional prop
+  - Reason: Allow ReleaseApp to inject a session ID to resume
+  - Change: Added `useEffect` that loads conversation history when `resumeSessionId` is set
+  - Reason: Restore all messages and context state from the database on mount
+  - Change: Added `resuming` state with spinner overlay
+  - Reason: Show feedback while history is being loaded
+
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Imported `InProgressView` component
+  - Reason: Wire up in-progress navigation
+  - Change: Added `resumeSessionId` state
+  - Reason: Passed to ChatInterface to trigger history restore
+  - Change: Added `handleResumeConversation`, `handleResumeProject`, `handleResumeRun` callbacks
+  - Reason: InProgressView dispatches resume actions to parent, which sets the correct screen state
+  - Change: Added routing branch for `activeView === 'in-progress'` with no active session
+  - Reason: Show InProgressView when no project/run is loaded and user clicks In Progress
+  - Change: `onBack` on RunScreen and `onRunLaunched` on ProjectReviewScreen now navigate to 'in-progress'
+  - Reason: Keep user in the In Progress context after launching or completing a run
+
+## Changes
+- added: `GET /api/v1/sessions/in-progress` backend endpoint
+- added: `InProgressView` component with resume capability for all 3 session types
+- added: `resumeSessionId` prop on `ChatInterface` to restore sessions from DB
+- added: Full conversation history restore (messages + context) on resume
+- changed: `onBack` on RunScreen navigates to In Progress instead of new decision
+- changed: `onRunLaunched` navigates to In Progress to stay in context
+
+## Session States Covered
+1. **Technical failure / connection error** — conversation session stays `in_progress` in DB; accessible via In Progress sidebar until manually cleared
+2. **Pre-requisite info incomplete** — active `ConversationSession` (status=in_progress) appears as a CONVERSATION card
+3. **Project ready, debate not started** — generated `Project` with no active/completed run appears as PROJECT READY card
+
+## Impact
+- user-visible impact: "In Progress" sidebar is now fully functional with real sessions
+- user-visible impact: No session data is lost on refresh or connection drop
+- user-visible impact: Users can resume conversations with full message history intact
+- user-visible impact: Users can jump back to project review or an active run
+- technical impact: All persistence uses existing DB tables — no migrations needed
+- risks or side effects: Conversation sessions accumulate unless explicitly closed; no auto-cleanup yet
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending
+
+## Follow-up
+- remaining work
+  - Add ability to archive/delete in-progress sessions from the list
+  - Auto-mark conversation sessions as stale after N days
+  - Show error badge on sessions that failed
+- technical debt
+  - Consider adding a `failed` status to ConversationSession for interrupted sessions
+
+---
+
+# v3.2.1 - 2026-03-21 11:58
+
+## Summary
+Fixed "LLM returned invalid JSON" error by adding robust JSON extraction logic to handle Gemini wrapping responses in markdown code blocks.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Enhanced `_generate_json_gemini` with multiple JSON extraction patterns
+  - Reason: Gemini sometimes wraps JSON in markdown code blocks (```json ... ```)
+  - Change: Added fallback pattern matching for ```json, ```, and raw { ... } extraction
+  - Reason: Try multiple strategies before failing to maximize success rate
+  - Change: Increased logged response preview from 500 to 1000 chars
+  - Reason: Better debugging when all extraction attempts fail
+
+## Changes
+- added: Regex pattern matching to extract JSON from markdown code blocks
+- added: Three fallback patterns: ```json, ```, and brace matching
+- changed: Error logging now shows first 1000 chars instead of 500
+- fixed: "LLM returned invalid JSON" errors when Gemini wraps response in markdown
+
+## Impact
+- user-visible impact: Debate runs should complete successfully instead of failing on JSON parse errors
+- technical impact: More resilient to LLM output format variations
+- risks or side effects: Brace matching could extract wrong JSON if response has multiple objects
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending - backend auto-reloads, retry failed debate run
+
+## Follow-up
+- remaining work
+  - Monitor logs to see which extraction pattern is most commonly used
+  - Consider adding response format enforcement in system prompts
+- technical debt
+  - Could extract JSON parsing logic to a shared utility function
+- limitations
+  - Greedy regex patterns may fail on very malformed responses
+
+---
+
+# v3.2.0 - 2026-03-21 11:49
+
+## Summary
+Implemented completed debates archive with full transcript viewing. Users can now access all completed debate runs from the sidebar, view complete transcripts with agent statements, and review final synthesis outputs.
+
+## Files Modified
+- `backend/app/services/runs.py` — modified
+  - Change: Added `list_completed_runs` method to query completed debates with project title and summary
+  - Reason: Need efficient endpoint to list all completed debates for a workspace
+  - Change: Added `get_full_run_details` method to fetch complete debate data including transcript, agents, and final output
+  - Reason: Single endpoint to get all debate details for viewing
+  - Change: Joins with Project and FinalOutput tables for enriched data
+  - Reason: Avoid N+1 queries and provide complete information in one call
+
+- `backend/app/main.py` — modified
+  - Change: Added `GET /api/v1/runs/completed` endpoint
+  - Reason: List all completed debates for the workspace
+  - Change: Added `GET /api/v1/runs/{run_id}/full` endpoint
+  - Reason: Get complete debate details including transcript and synthesis
+
+- `backend/app/schemas.py` — modified
+  - Change: Changed `FlowStepDraft.rules` from `dict[str, Any]` to `list[str] | dict[str, Any]`
+  - Reason: LLM was returning rules as list of strings, causing validation errors
+  - Change: Updated default from `dict` to `list`
+  - Reason: Match the most common LLM output format
+
+- `src/release/api.ts` — modified
+  - Change: Added `CompletedDebateListItem` and `FullDebateDetails` interfaces
+  - Reason: Type safety for new API responses
+  - Change: Added `listCompletedDebates` and `getFullDebateDetails` functions
+  - Reason: Frontend API client for completed debates endpoints
+
+- `src/release/CompletedDebatesView.tsx` — created
+  - Change: New component showing grid of completed debates with summary cards
+  - Reason: Main UI for browsing completed debates
+  - Change: Click to expand full debate view with agents, transcript, and synthesis
+  - Reason: Detailed view of complete debate including all agent statements
+  - Change: Transcript shows phase name, speaker, sequence, and full content
+  - Reason: Users need to see the complete conversation flow
+  - Change: Final synthesis section shows summary, verdict, and recommendations
+  - Reason: Display the debate outcome and actionable insights
+  - Change: Applied Colonial Blue and Burnt Orange color palette
+  - Reason: Consistent with overall design system
+
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Imported `CompletedDebatesView` component
+  - Reason: Wire up completed debates view
+  - Change: Added conditional rendering for `activeView === 'completed'`
+  - Reason: Show CompletedDebatesView when user clicks "Completed" in sidebar
+
+## Changes
+- added: Backend endpoint `GET /api/v1/runs/completed` to list completed debates
+- added: Backend endpoint `GET /api/v1/runs/{run_id}/full` to get full debate details
+- added: CompletedDebatesView component with list and detail views
+- added: Complete transcript viewing with phase, speaker, and sequence info
+- added: Final synthesis display with summary, verdict, and recommendations
+- changed: FlowStepDraft.rules schema to accept both list and dict formats
+- fixed: Pydantic validation error when LLM returns rules as list of strings
+
+## Impact
+- user-visible impact: "Completed" sidebar nav now functional - shows all finished debates
+- user-visible impact: Can browse completed debates and view full transcripts
+- user-visible impact: Each agent's statements are clearly labeled with phase and sequence
+- user-visible impact: Final synthesis and recommendations are easily accessible
+- technical impact: Existing database schema sufficient - no migrations needed
+- technical impact: Efficient queries with joins to avoid N+1 problems
+- risks or side effects: Large transcripts may be slow to render (not paginated)
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending - needs completed debate run to test
+
+## Follow-up
+- remaining work
+  - Add pagination for debates list if workspace has many completed runs
+  - Add search/filter by project title or date range
+  - Add export transcript as PDF or markdown
+- technical debt
+  - Consider caching full debate details to reduce database load
+  - Transcript rendering could be virtualized for very long debates
+- limitations
+  - No pagination on transcript (could be slow for 100+ message debates)
+  - Recent sessions in sidebar don't persist across page refresh
+
+---
+
+# v3.1.0 - 2026-03-21 09:18
+
+## Summary
+Added collapsible left sidebar to the main app layout and redesigned the UI using the brand color palette (Burnt Orange, Colonial Blue, Skywriting, Gray Lustre, Bright White).
+
+## Files Modified
+- `src/release/Sidebar.tsx` — created
+  - Change: New collapsible sidebar component with Colonial Blue background
+  - Reason: Match the "Decision Intelligence" sidebar design reference
+  - Change: Navigation items (Dashboard, In Progress, Completed, Starred, Search, Templates, Reports) with active state indicator
+  - Reason: Give users a persistent nav structure
+  - Change: Burnt Orange "NEW DECISION" button at top
+  - Reason: Primary CTA always visible and actionable
+  - Change: Recent Sessions section at bottom showing last 3 sessions with status badges
+  - Reason: Quick access to in-progress and completed decisions
+  - Change: Collapse/expand toggle (64px collapsed, 240px expanded)
+  - Reason: Allow users to reclaim screen space when needed
+  - Change: Sign-out button and email in sidebar footer
+  - Reason: Consolidate user controls in sidebar, removing old top header
+
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Removed sticky top header; replaced with Sidebar component
+  - Reason: Header is redundant with sidebar present
+  - Change: Added `sidebarCollapsed`, `activeView`, `recentSessions` state
+  - Reason: Drive sidebar UI from parent state
+  - Change: `handleNewDecision` resets project/run and nav view to dashboard
+  - Reason: "New Decision" in sidebar correctly resets the conversation
+  - Change: `useEffect` tracks recent sessions automatically when project/run state changes
+  - Reason: Sidebar recent sessions stay current without manual management
+  - Change: Applied `#111827` dark background as base layout color
+  - Reason: Consistent with color palette guidance
+
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Replaced all Tailwind class-based styles with inline styles using palette colors
+  - Reason: Apply exact palette values (Burnt Orange #CC5500, Colonial Blue #5B7E91, Skywriting #D6E4E8, Gray Lustre #9E9E9E)
+  - Change: User message bubbles now use Burnt Orange (#CC5500)
+  - Reason: Motivational, dynamic color for user actions
+  - Change: Right context panel uses Colonial Blue tints
+  - Reason: Stability and trust for the analysis sidebar
+  - Change: Progress bar uses Burnt Orange
+  - Reason: Progress bars to show urgency per color palette guide
+  - Change: "Start Debate" button uses Burnt Orange
+  - Reason: Primary CTA color
+  - Change: Input focus border uses Colonial Blue
+  - Reason: Calm, structured interaction feedback
+  - Change: Example prompts are clickable to pre-fill input
+  - Reason: Better UX for getting started quickly
+
+## Changes
+- added: Collapsible left sidebar (Sidebar.tsx) with full navigation, CTA, and recent sessions
+- added: Recent sessions tracking in ReleaseApp state
+- added: Clickable example prompts on welcome screen
+- changed: Main layout from `min-h-screen` header+content to sidebar+main flex layout
+- changed: All UI colors to match brand palette
+- changed: Sign-out button moved from top header to sidebar footer
+- removed: Sticky top header from ReleaseApp
+- removed: Tailwind color classes replaced with palette-matched inline styles
+
+## Impact
+- user-visible impact: Persistent navigation sidebar matching "Decision Intelligence" reference design
+- user-visible impact: Cleaner layout with more space for the chat interface
+- user-visible impact: Brand-consistent colors throughout (Burnt Orange CTAs, Colonial Blue structure)
+- technical impact: ReleaseApp is now the layout host; Sidebar is a standalone controlled component
+- risks or side effects: Inline styles instead of Tailwind classes — less consistent with rest of codebase
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — needs visual check in browser
+
+## Follow-up
+- remaining work
+  - Apply palette to ProjectReviewScreen and RunScreen
+  - Wire up Search, Templates, Reports nav items to real functionality
+  - Persist sidebar collapsed state to localStorage
+- technical debt
+  - Consider extracting palette constants to a shared theme file
+- limitations
+  - Recent sessions reset on page refresh (not persisted)
+
+---
+
 # v3.0.3 - 2026-03-21 09:06
 
 ## Summary

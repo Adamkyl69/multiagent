@@ -189,6 +189,15 @@ async def launch_run(
     )
 
 
+@app.get(f"{settings.api_v1_prefix}/runs/completed")
+async def list_completed_runs(
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+    limit: int = 50,
+):
+    return await run_service.list_completed_runs(session, context["workspace"].id, limit)
+
+
 @app.get(f"{settings.api_v1_prefix}/runs/{{run_id}}", response_model=RunResponse)
 async def get_run(
     run_id: str,
@@ -236,6 +245,15 @@ async def stream_run_events(
     )
 
 
+@app.get(f"{settings.api_v1_prefix}/runs/{{run_id}}/full")
+async def get_full_run_details(
+    run_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await run_service.get_full_run_details(session, context["workspace"].id, run_id)
+
+
 @app.get(f"{settings.api_v1_prefix}/billing/plan", response_model=PlanResponse)
 async def get_plan(
     context=Depends(require_workspace),
@@ -258,6 +276,14 @@ async def get_usage_history(
     session: AsyncSession = Depends(get_db_session),
 ):
     return await billing_service.list_usage_history(session, context["workspace"].id)
+
+
+@app.get(f"{settings.api_v1_prefix}/sessions/in-progress")
+async def list_in_progress_sessions(
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await conversation_service.list_in_progress_sessions(session, context["workspace"].id)
 
 
 @app.post(f"{settings.api_v1_prefix}/conversations/start", response_model=ConversationResponse)
