@@ -129,7 +129,11 @@ export default function Sidebar({
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (openMenuId) {
-        setOpenMenuId(null);
+        const target = event.target as HTMLElement;
+        // Don't close if clicking inside a menu
+        if (!target.closest('.dropdown-menu')) {
+          setOpenMenuId(null);
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -176,6 +180,7 @@ export default function Sidebar({
   }
 
   function handleEditClick(id: string, currentTitle: string, e: React.MouseEvent) {
+    console.log('Edit clicked:', { id, currentTitle });
     e.stopPropagation();
     setEditingId(id);
     setEditingTitle(currentTitle);
@@ -206,6 +211,7 @@ export default function Sidebar({
   }
 
   function handleDeleteClick(id: string, type: string, title: string, e: React.MouseEvent) {
+    console.log('Delete clicked:', { id, type, title });
     e.stopPropagation();
     setShowDeleteConfirm({ id, type, title });
     setOpenMenuId(null);
@@ -214,8 +220,12 @@ export default function Sidebar({
   async function handleConfirmDelete() {
     if (!showDeleteConfirm) return;
     
+    console.log('Delete confirm clicked:', showDeleteConfirm);
+    
     try {
       const { id, type } = showDeleteConfirm;
+      
+      console.log(`Deleting ${type} with id:`, id);
       
       if (type === 'conversation') {
         await deleteConversation(token, id);
@@ -229,9 +239,11 @@ export default function Sidebar({
         setCompletedItems(prev => prev.filter(item => item.run_id !== id));
       }
       
+      console.log('Delete successful');
       setShowDeleteConfirm(null);
     } catch (err) {
       console.error('Failed to delete:', err);
+      alert(`Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   }
 
@@ -514,6 +526,7 @@ export default function Sidebar({
                       )}
                       {menuOpen && (
                         <div
+                          className="dropdown-menu"
                           style={{
                             position: 'absolute',
                             top: '100%',
@@ -552,6 +565,7 @@ export default function Sidebar({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              alert('Pin feature coming soon!');
                               setOpenMenuId(null);
                             }}
                             style={{
@@ -577,6 +591,7 @@ export default function Sidebar({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              alert('Archive feature coming soon!');
                               setOpenMenuId(null);
                             }}
                             style={{
@@ -629,35 +644,29 @@ export default function Sidebar({
                 })}
               </div>
               {inProgressItems.length > inProgressDisplayCount && (
-                <button
+                <div
                   onClick={() => setInProgressDisplayCount(prev => prev + 6)}
                   style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    marginTop: 6,
+                    padding: '4px 12px',
+                    marginTop: 4,
                     marginLeft: 6,
                     marginRight: 6,
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 6,
-                    color: 'rgba(255,255,255,0.6)',
+                    color: 'rgba(255,255,255,0.5)',
                     cursor: 'pointer',
                     fontSize: 10,
-                    fontWeight: 600,
+                    fontWeight: 500,
                     letterSpacing: '0.05em',
-                    transition: 'all 0.12s',
+                    transition: 'color 0.12s',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
                   }}
                 >
-                  LOAD MORE
-                </button>
+                  Load more
+                </div>
               )}
             </>
           )}
@@ -781,6 +790,7 @@ export default function Sidebar({
                         )}
                         {menuOpen && (
                           <div
+                            className="dropdown-menu"
                             style={{
                               position: 'absolute',
                               top: '100%',
@@ -819,6 +829,7 @@ export default function Sidebar({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                alert('Pin feature coming soon!');
                                 setOpenMenuId(null);
                               }}
                               style={{
@@ -844,6 +855,7 @@ export default function Sidebar({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                alert('Archive feature coming soon!');
                                 setOpenMenuId(null);
                               }}
                               style={{
@@ -896,35 +908,29 @@ export default function Sidebar({
                   })}
                 </div>
                 {completedItems.length > completedDisplayCount && (
-                  <button
+                  <div
                     onClick={() => setCompletedDisplayCount(prev => prev + 6)}
                     style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      marginTop: 6,
+                      padding: '4px 12px',
+                      marginTop: 4,
                       marginLeft: 6,
                       marginRight: 6,
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 6,
-                      color: 'rgba(255,255,255,0.6)',
+                      color: 'rgba(255,255,255,0.5)',
                       cursor: 'pointer',
                       fontSize: 10,
-                      fontWeight: 600,
+                      fontWeight: 500,
                       letterSpacing: '0.05em',
-                      transition: 'all 0.12s',
+                      transition: 'color 0.12s',
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                      e.currentTarget.style.color = '#fff';
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
                     }}
                   >
-                    LOAD MORE
-                  </button>
+                    Load more
+                  </div>
                 )}
               </>
             )}
