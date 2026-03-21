@@ -710,6 +710,144 @@ Return JSON:
             next_stage="ready",
         )
 
+    async def update_conversation(
+        self,
+        session: AsyncSession,
+        workspace_id: str,
+        session_id: str,
+        title: str | None = None,
+    ) -> dict:
+        """Update conversation title."""
+        conv_session = await session.scalar(
+            select(ConversationSession).where(
+                ConversationSession.id == session_id,
+                ConversationSession.workspace_id == workspace_id,
+            )
+        )
+        if not conv_session:
+            from fastapi import HTTPException, status
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+        
+        if title is not None:
+            conv_session.collected_context = conv_session.collected_context or {}
+            conv_session.collected_context["title"] = title
+        
+        await session.commit()
+        return {"status": "updated", "session_id": session_id}
+
+    async def delete_conversation(
+        self,
+        session: AsyncSession,
+        workspace_id: str,
+        session_id: str,
+    ) -> None:
+        """Delete a conversation and all its messages."""
+        conv_session = await session.scalar(
+            select(ConversationSession).where(
+                ConversationSession.id == session_id,
+                ConversationSession.workspace_id == workspace_id,
+            )
+        )
+        if not conv_session:
+            from fastapi import HTTPException, status
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+        
+        # Delete all messages first
+        messages = await session.execute(
+            select(ConversationMessage).where(ConversationMessage.session_id == session_id)
+        )
+        for msg in messages.scalars():
+            await session.delete(msg)
+        
+        # Delete the session
+        await session.delete(conv_session)
+        await session.commit()
+
+    async def list_in_progress_sessions(
+        self,
+        session: AsyncSession,
+        workspace_id: str,
+    ) -> list[dict]:
+        """Return all in-progress items: active conversations, projects awaiting run, queued/running runs."""
+        from app.models import DebateRun, Project
+
+        results = []
+
+        # 1. Active conversation sessions (user still chatting)
+        conv_sessions = await session.scalars(
+            select(ConversationSession)
+            .where(
+                ConversationSession.workspace_id == workspace_id,
+                ConversationSession.status == "in_progress",
+            )
+            .order_by(ConversationSession.updated_at.desc())
+        )
+        for cs in conv_sessions.all():
+            context = cs.collected_context or {}
+            raw_q = context.get("raw_question") or ""
+            title = raw_q[:80] if raw_q else "Untitled conversation"
+            results.append({
+                "id": cs.id,
+                "type": "conversation",
+                "title": title,
+                "stage": context.get("stage", "entry"),
+                "completeness": context.get("completeness", 0),
+                "updated_at": cs.updated_at.isoformat() if cs.updated_at else None,
+                "status": "in_progress",
+                "project_id": cs.project_id,
+            })
+
+        # 2. Projects generated but with no active/completed run (awaiting debate launch)
+        runs_subquery = select(DebateRun.project_id).where(
+            DebateRun.status.in_(["queued", "running", "completed"])
+        )
+        projects = await session.scalars(
+            select(Project)
+            .where(
+                Project.workspace_id == workspace_id,
+                ~Project.id.in_(runs_subquery),
+            )
+            .order_by(Project.updated_at.desc())
+        )
+        for p in projects.all():
+            results.append({
+                "id": p.id,
+                "type": "project",
+                "title": p.title,
+                "stage": "ready_to_run",
+                "completeness": 100,
+                "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+                "status": "awaiting_run",
+                "project_id": p.id,
+            })
+
+        # 3. Queued and running debate runs
+        runs = await session.execute(
+            select(DebateRun, Project)
+            .join(Project, DebateRun.project_id == Project.id)
+            .where(
+                DebateRun.workspace_id == workspace_id,
+                DebateRun.status.in_(["queued", "running"]),
+            )
+            .order_by(DebateRun.created_at.desc())
+        )
+        for run, project in runs.all():
+            results.append({
+                "id": run.id,
+                "type": "run",
+                "title": project.title,
+                "stage": run.status,
+                "completeness": 60 if run.status == "running" else 20,
+                "updated_at": run.updated_at.isoformat() if run.updated_at else None,
+                "status": run.status,
+                "project_id": run.project_id,
+                "run_id": run.id,
+            })
+
+        # Sort by updated_at descending, nulls last
+        results.sort(key=lambda x: x["updated_at"] or "", reverse=True)
+        return results
+
     async def get_conversation(
         self,
         session: AsyncSession,

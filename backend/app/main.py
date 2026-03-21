@@ -160,6 +160,20 @@ async def update_project(
     )
 
 
+@app.delete(f"{settings.api_v1_prefix}/projects/{{project_id}}")
+async def delete_project(
+    project_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    await project_service.delete_project(
+        session,
+        workspace_id=context["workspace"].id,
+        project_id=project_id,
+    )
+    return {"status": "deleted"}
+
+
 @app.post(f"{settings.api_v1_prefix}/projects/{{project_id}}/versions", response_model=ProjectVersionResponse)
 async def create_project_version(
     project_id: str,
@@ -214,6 +228,20 @@ async def stop_run(
     session: AsyncSession = Depends(get_db_session),
 ):
     return await run_service.stop_run(session, context["workspace"].id, run_id)
+
+
+@app.delete(f"{settings.api_v1_prefix}/runs/{{run_id}}")
+async def delete_run(
+    run_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    await run_service.delete_run(
+        session,
+        workspace_id=context["workspace"].id,
+        run_id=run_id,
+    )
+    return {"status": "deleted"}
 
 
 @app.get(f"{settings.api_v1_prefix}/runs/{{run_id}}/transcript", response_model=list[TranscriptMessageResponse])
@@ -322,6 +350,35 @@ async def get_conversation(
     session: AsyncSession = Depends(get_db_session),
 ):
     return await conversation_service.get_conversation(session, session_id)
+
+
+@app.patch(f"{settings.api_v1_prefix}/conversations/{{session_id}}")
+async def update_conversation(
+    session_id: str,
+    payload: dict,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await conversation_service.update_conversation(
+        session,
+        workspace_id=context["workspace"].id,
+        session_id=session_id,
+        title=payload.get("title"),
+    )
+
+
+@app.delete(f"{settings.api_v1_prefix}/conversations/{{session_id}}")
+async def delete_conversation(
+    session_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    await conversation_service.delete_conversation(
+        session,
+        workspace_id=context["workspace"].id,
+        session_id=session_id,
+    )
+    return {"status": "deleted"}
 
 
 @app.post(f"{settings.api_v1_prefix}/conversations/{{session_id}}/generate", response_model=ProjectResponse)

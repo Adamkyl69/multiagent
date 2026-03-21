@@ -241,6 +241,36 @@ class RunService:
         await self._append_event(session, run.id, "run.canceled", {"status": run.status})
         return self._run_response(run)
 
+    async def delete_run(
+        self,
+        session: AsyncSession,
+        workspace_id: str,
+        run_id: str,
+    ) -> None:
+        """Delete a run and all its messages and final output."""
+        run = await session.scalar(select(DebateRun).where(DebateRun.id == run_id, DebateRun.workspace_id == workspace_id))
+        if run is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found.")
+        
+        # Delete debate messages
+        messages = await session.execute(
+            select(DebateMessage).where(DebateMessage.run_id == run_id)
+        )
+        for msg in messages.scalars():
+            await session.delete(msg)
+        
+        # Delete final output
+        from app.models import FinalOutput
+        final_output = await session.scalar(
+            select(FinalOutput).where(FinalOutput.run_id == run_id)
+        )
+        if final_output:
+            await session.delete(final_output)
+        
+        # Delete the run
+        await session.delete(run)
+        await session.commit()
+
     async def get_run(self, session: AsyncSession, workspace_id: str, run_id: str) -> RunResponse:
         run = await session.scalar(select(DebateRun).where(DebateRun.id == run_id, DebateRun.workspace_id == workspace_id))
         if run is None:
@@ -372,6 +402,72 @@ class RunService:
             }
             for item in ordered_messages
         ]
+
+    async def list_completed_runs(self, session: AsyncSession, workspace_id: str, limit: int = 50) -> list[dict]:
+        """List completed debate runs with project title and summary."""
+        from app.models import Project, FinalOutput
+        
+        runs = await session.execute(
+            select(DebateRun, Project, FinalOutput)
+            .join(Project, DebateRun.project_id == Project.id)
+            .outerjoin(FinalOutput, DebateRun.id == FinalOutput.run_id)
+            .where(
+                DebateRun.workspace_id == workspace_id,
+                DebateRun.status == "completed"
+            )
+            .order_by(DebateRun.completed_at.desc())
+            .limit(limit)
+        )
+        
+        result = []
+        for run, project, final_output in runs.all():
+            result.append({
+                "run_id": run.id,
+                "project_id": run.project_id,
+                "project_title": project.title,
+                "status": run.status,
+                "completed_at": run.completed_at,
+                "actual_cost_cents": run.actual_cost_cents,
+                "summary": final_output.summary if final_output else None,
+                "verdict": final_output.verdict if final_output else None,
+            })
+        return result
+
+    async def get_full_run_details(self, session: AsyncSession, workspace_id: str, run_id: str) -> dict:
+        """Get complete debate run details including project, transcript, and final output."""
+        from app.models import Project, ProjectVersion
+        
+        # Get run and verify workspace
+        run = await self.get_run(session, workspace_id, run_id)
+        
+        # Get project
+        project = await session.scalar(select(Project).where(Project.id == run.project_id))
+        if not project:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+        
+        # Get project version snapshot
+        version = await session.scalar(select(ProjectVersion).where(ProjectVersion.id == run.project_version_id))
+        snapshot = version.snapshot_json if version else {}
+        
+        # Get transcript
+        transcript = await self.list_transcript(session, workspace_id, run_id)
+        
+        # Get final output
+        final_output = None
+        try:
+            final_output = await self.get_final_output(session, workspace_id, run_id)
+        except HTTPException:
+            pass  # Final output may not exist for incomplete runs
+        
+        return {
+            "run": run,
+            "project_title": project.title,
+            "project_objective": project.objective,
+            "agents": snapshot.get("agents", []),
+            "flow": snapshot.get("flow", []),
+            "transcript": transcript,
+            "final_output": final_output,
+        }
 
     def _run_response(self, run: DebateRun) -> RunResponse:
         return RunResponse(

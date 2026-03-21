@@ -184,6 +184,123 @@ Major UX flow redesign. Simplified entry point, automatic decision classificatio
 
 ---
 
+# v3.3.9 - 2026-03-21 15:40
+
+## Summary
+Added three-dot menu to sidebar session lists with Rename and Delete functionality. Redesigned lists with minimalistic style (removed icons). Implemented inline title editing, delete confirmation modal, and backend endpoints for updating/deleting conversations, projects, and runs. Pin and Archive options are UI placeholders for future implementation.
+
+## Files Modified
+- `backend/app/main.py` — modified
+  - Change: Added DELETE endpoints for conversations, projects, and runs
+  - Change: Added PATCH endpoint for conversation title updates
+  - Reason: Enable session management from sidebar
+
+- `backend/app/services/conversation_v2.py` — modified
+  - Change: Added `update_conversation()` and `delete_conversation()` methods
+  - Reason: Support title updates and deletion of conversation sessions
+
+- `backend/app/services/projects.py` — modified
+  - Change: Added `delete_project()` method with cascade deletion
+  - Reason: Delete projects and all related versions, configurations, and runs
+
+- `backend/app/services/runs.py` — modified
+  - Change: Added `delete_run()` method
+  - Reason: Delete runs and all related messages and final outputs
+
+- `src/release/api.ts` — modified
+  - Change: Added API client methods for update/delete operations
+  - Reason: Frontend needs to call new backend endpoints
+
+- `src/release/Sidebar.tsx` — modified
+  - Change: Removed icons from list items for minimalistic design
+  - Change: Added three-dot menu button (MoreVertical icon) to each list item
+  - Change: Implemented dropdown menu with Rename, Pin, Archive, Delete options
+  - Change: Added inline title editing with input field (Enter to save, Escape to cancel)
+  - Change: Added delete confirmation modal with Cancel/Delete buttons
+  - Change: Added click-outside handler to close menus
+  - Change: Updated state management for menu/editing/delete operations
+  - Reason: User requested three-dot menu with rename/pin/archive/delete and minimalistic design
+
+## Changes
+- added: Three-dot menu on all sidebar list items (in-progress and completed)
+- added: Rename functionality with inline editing
+- added: Delete functionality with confirmation modal
+- added: Backend DELETE endpoints for conversations, projects, runs
+- added: Backend PATCH endpoint for conversation title updates
+- changed: List items now use minimalistic design without type icons
+- changed: Reduced padding and gap between list items for cleaner look
+- improved: Click-outside closes open menus automatically
+- placeholder: Pin and Archive menu options (UI only, not yet functional)
+
+## Impact
+- user-visible impact: Users can now rename sessions by clicking three-dot menu → Rename
+- user-visible impact: Users can delete sessions with confirmation dialog
+- user-visible impact: Cleaner, more minimalistic list design
+- technical impact: Full CRUD operations for sessions via sidebar
+- risks or side effects: Deleting projects/runs cascades to related data (versions, messages, etc.)
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Fixed JSX structure errors
+- build: Not run
+- manual verification: Pending — restart backend, refresh frontend, test three-dot menu
+
+## Follow-up
+- remaining work
+  - Implement Pin functionality (backend + frontend)
+  - Implement Archive functionality (backend + frontend)
+- technical debt
+  - Consider adding undo functionality for deletions
+  - Consider soft delete instead of hard delete for better data recovery
+- limitations
+  - Pin and Archive are UI placeholders only
+  - No batch operations (delete multiple sessions at once)
+
+---
+
+# v3.3.8 - 2026-03-21 13:18
+
+## Summary
+Added "Load More" button with pagination to the "In Progress" sessions list in the sidebar. Both "In Progress" and "Completed" sections now support pagination, displaying 6 items initially with the ability to load 6 more at a time.
+
+## Files Modified
+- `src/release/Sidebar.tsx` — modified
+  - Change: Added `inProgressDisplayCount` state (starts at 6, increments by 6)
+  - Reason: In-progress list was hardcoded to show only 5 items with no way to see more
+  - Change: Changed `inProgressItems.slice(0, 5)` to `inProgressItems.slice(0, inProgressDisplayCount)`
+  - Reason: Enable dynamic pagination based on user interaction
+  - Change: Added "Load More" button for in-progress list (identical to completed list implementation)
+  - Reason: Provide consistent pagination UX across both sidebar lists
+
+## Changes
+- added: "Load More" button for in-progress sessions list
+- changed: In-progress list now shows 6 items initially (was 5)
+- improved: Consistent pagination behavior across both in-progress and completed lists
+
+## Impact
+- user-visible impact: Users can now view all in-progress sessions via "Load More" button
+- user-visible impact: Both lists have consistent pagination (6 items + Load More)
+- technical impact: Improved UX consistency between sidebar list sections
+- risks or side effects: None
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — refresh frontend to see Load More button on in-progress list
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
+
+---
+
 # v3.3.7 - 2026-03-21 13:10
 
 ## Summary

@@ -158,6 +158,50 @@ class ProjectService:
         await session.refresh(project)
         return self._project_response(project, version, snapshot)
 
+    async def delete_project(
+        self,
+        session: AsyncSession,
+        workspace_id: str,
+        project_id: str,
+    ) -> None:
+        """Delete a project and all its versions, configurations, and runs."""
+        project = await self._get_project_or_404(session, workspace_id, project_id)
+        
+        # Delete all related data (cascade should handle most, but being explicit)
+        from app.models import ProjectVersion, AgentConfiguration, FlowConfiguration, DebateRun
+        
+        # Delete runs
+        runs = await session.execute(
+            select(DebateRun).where(DebateRun.project_id == project_id)
+        )
+        for run in runs.scalars():
+            await session.delete(run)
+        
+        # Delete versions and their configurations
+        versions = await session.execute(
+            select(ProjectVersion).where(ProjectVersion.project_id == project_id)
+        )
+        for version in versions.scalars():
+            # Delete agent configurations
+            agents = await session.execute(
+                select(AgentConfiguration).where(AgentConfiguration.project_version_id == version.id)
+            )
+            for agent in agents.scalars():
+                await session.delete(agent)
+            
+            # Delete flow configurations
+            flows = await session.execute(
+                select(FlowConfiguration).where(FlowConfiguration.project_version_id == version.id)
+            )
+            for flow in flows.scalars():
+                await session.delete(flow)
+            
+            await session.delete(version)
+        
+        # Delete the project
+        await session.delete(project)
+        await session.commit()
+
     async def create_version(
         self,
         session: AsyncSession,

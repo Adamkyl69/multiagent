@@ -16,8 +16,23 @@ import {
   MessageSquare,
   Zap,
   Play,
+  MoreVertical,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
-import { listInProgressSessions, listCompletedDebates, getProject, getRun, type InProgressItem, type CompletedDebateListItem } from './api';
+import { 
+  listInProgressSessions, 
+  listCompletedDebates, 
+  getProject, 
+  getRun, 
+  updateConversationTitle,
+  updateProjectTitle,
+  deleteConversation,
+  deleteProject,
+  deleteRun,
+  type InProgressItem, 
+  type CompletedDebateListItem 
+} from './api';
 import type { ProjectResponse, RunResponse } from './types';
 
 export interface RecentSession {
@@ -96,6 +111,11 @@ export default function Sidebar({
   const [completedItems, setCompletedItems] = useState<CompletedDebateListItem[]>([]);
   const [loadingCompleted, setLoadingCompleted] = useState(false);
   const [completedDisplayCount, setCompletedDisplayCount] = useState(6);
+  const [inProgressDisplayCount, setInProgressDisplayCount] = useState(6);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ id: string; type: string; title: string } | null>(null);
 
   const sidebarBg = '#5B7E91';
   const activeBg = 'rgba(255,255,255,0.12)';
@@ -105,6 +125,16 @@ export default function Sidebar({
     loadInProgressSessions();
     loadCompletedRuns();
   }, [token]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (openMenuId) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
 
   async function loadInProgressSessions() {
     setLoadingInProgress(true);
@@ -145,6 +175,66 @@ export default function Sidebar({
     }
   }
 
+  function handleEditClick(id: string, currentTitle: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingId(id);
+    setEditingTitle(currentTitle);
+    setOpenMenuId(null);
+  }
+
+  async function handleSaveEdit(id: string, type: 'conversation' | 'project' | 'run') {
+    try {
+      if (type === 'conversation') {
+        await updateConversationTitle(token, id, editingTitle);
+        setInProgressItems(prev => prev.map(item => 
+          item.id === id && item.type === 'conversation' ? { ...item, title: editingTitle } : item
+        ));
+      } else if (type === 'project') {
+        await updateProjectTitle(token, id, editingTitle);
+        setInProgressItems(prev => prev.map(item => 
+          item.id === id && item.type === 'project' ? { ...item, title: editingTitle } : item
+        ));
+        setCompletedItems(prev => prev.map(item => 
+          item.project_id === id ? { ...item, project_title: editingTitle } : item
+        ));
+      }
+      setEditingId(null);
+      setEditingTitle('');
+    } catch (err) {
+      console.error('Failed to update title:', err);
+    }
+  }
+
+  function handleDeleteClick(id: string, type: string, title: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setShowDeleteConfirm({ id, type, title });
+    setOpenMenuId(null);
+  }
+
+  async function handleConfirmDelete() {
+    if (!showDeleteConfirm) return;
+    
+    try {
+      const { id, type } = showDeleteConfirm;
+      
+      if (type === 'conversation') {
+        await deleteConversation(token, id);
+        setInProgressItems(prev => prev.filter(item => item.id !== id));
+      } else if (type === 'project') {
+        await deleteProject(token, id);
+        setInProgressItems(prev => prev.filter(item => item.id !== id));
+        setCompletedItems(prev => prev.filter(item => item.project_id !== id));
+      } else if (type === 'run') {
+        await deleteRun(token, id);
+        setCompletedItems(prev => prev.filter(item => item.run_id !== id));
+      }
+      
+      setShowDeleteConfirm(null);
+    } catch (err) {
+      console.error('Failed to delete:', err);
+    }
+  }
+
   async function handleResumeItem(item: InProgressItem) {
     setResumingId(item.id);
     try {
@@ -181,6 +271,7 @@ export default function Sidebar({
   };
 
   return (
+    <>
     <aside
       style={{
         width: collapsed ? 64 : 240,
@@ -321,47 +412,243 @@ export default function Sidebar({
                 No active sessions
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 6, paddingRight: 6 }}>
-                {inProgressItems.slice(0, 5).map((item) => {
-                  const ItemIcon = TYPE_ICONS[item.type] || MessageSquare;
-                  const typeColor = TYPE_COLORS[item.type] || '#9E9E9E';
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 6, paddingRight: 6 }}>
+                  {inProgressItems.slice(0, inProgressDisplayCount).map((item) => {
                   const isResuming = resumingId === item.id;
+                  const isEditing = editingId === item.id;
+                  const menuOpen = openMenuId === item.id;
 
                   return (
-                    <button
+                    <div
                       key={`${item.type}-${item.id}`}
-                      onClick={() => handleResumeItem(item)}
-                      disabled={isResuming || !!resumingId}
                       style={{
+                        position: 'relative',
                         width: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
-                        padding: '8px 10px',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: 'none',
-                        borderRadius: 6,
-                        color: '#fff',
-                        cursor: isResuming || resumingId ? 'not-allowed' : 'pointer',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        textAlign: 'left',
+                        padding: '6px 8px',
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: 4,
                         transition: 'background 0.12s',
-                        opacity: resumingId && !isResuming ? 0.5 : 1,
                       }}
-                      onMouseEnter={e => { if (!resumingId) e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                      onMouseLeave={e => { if (!resumingId) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                     >
-                      <ItemIcon size={13} style={{ color: typeColor, flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.title}
-                      </div>
-                    </button>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit(item.id, item.type as 'conversation' | 'project');
+                            if (e.key === 'Escape') { setEditingId(null); setEditingTitle(''); }
+                          }}
+                          onBlur={() => handleSaveEdit(item.id, item.type as 'conversation' | 'project')}
+                          autoFocus
+                          style={{
+                            flex: 1,
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: 3,
+                            padding: '4px 6px',
+                            color: '#fff',
+                            fontSize: 11,
+                            fontWeight: 500,
+                            outline: 'none',
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <div
+                            onClick={() => !isResuming && handleResumeItem(item)}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              cursor: isResuming ? 'not-allowed' : 'pointer',
+                              fontSize: 11,
+                              fontWeight: 500,
+                              color: 'rgba(255,255,255,0.85)',
+                            }}
+                          >
+                            {item.title}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(menuOpen ? null : item.id);
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              padding: 4,
+                              cursor: 'pointer',
+                              color: 'rgba(255,255,255,0.5)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              borderRadius: 3,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.9)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                        </>
+                      )}
+                      {menuOpen && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 8,
+                            marginTop: 4,
+                            background: '#2d3748',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: 6,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                            zIndex: 1000,
+                            minWidth: 140,
+                          }}
+                        >
+                          <button
+                            onClick={(e) => handleEditClick(item.id, item.title, e)}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'rgba(255,255,255,0.85)',
+                              fontSize: 11,
+                              fontWeight: 500,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <Edit2 size={12} />
+                            Rename
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'rgba(255,255,255,0.85)',
+                              fontSize: 11,
+                              fontWeight: 500,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <Star size={12} />
+                            Pin
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'rgba(255,255,255,0.85)',
+                              fontSize: 11,
+                              fontWeight: 500,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <FileText size={12} />
+                            Archive
+                          </button>
+                          <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+                          <button
+                            onClick={(e) => handleDeleteClick(item.id, item.type, item.title, e)}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#e05252',
+                              fontSize: 11,
+                              fontWeight: 500,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,82,82,0.1)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <Trash2 size={12} />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
-            )}
-          </div>
+              {inProgressItems.length > inProgressDisplayCount && (
+                <button
+                  onClick={() => setInProgressDisplayCount(prev => prev + 6)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    marginTop: 6,
+                    marginLeft: 6,
+                    marginRight: 6,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 6,
+                    color: 'rgba(255,255,255,0.6)',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    transition: 'all 0.12s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                  }}
+                >
+                  LOAD MORE
+                </button>
+              )}
+            </>
+          )}
+        </div>
         )}
 
         {/* Completed List */}
@@ -380,40 +667,205 @@ export default function Sidebar({
               </div>
             ) : (
               <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 6, paddingRight: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 6, paddingRight: 6 }}>
                   {completedItems.slice(0, completedDisplayCount).map((item) => {
                     const isResuming = resumingId === item.run_id;
+                    const isEditing = editingId === item.run_id;
+                    const menuOpen = openMenuId === item.run_id;
 
                     return (
-                      <button
+                      <div
                         key={item.run_id}
-                        onClick={() => handleResumeCompleted(item)}
-                        disabled={isResuming || !!resumingId}
                         style={{
+                          position: 'relative',
                           width: '100%',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 8,
-                          padding: '8px 10px',
-                          background: 'rgba(255,255,255,0.05)',
-                          border: 'none',
-                          borderRadius: 6,
-                          color: '#fff',
-                          cursor: isResuming || resumingId ? 'not-allowed' : 'pointer',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          textAlign: 'left',
+                          padding: '6px 8px',
+                          background: 'rgba(255,255,255,0.03)',
+                          borderRadius: 4,
                           transition: 'background 0.12s',
-                          opacity: resumingId && !isResuming ? 0.5 : 1,
                         }}
-                        onMouseEnter={e => { if (!resumingId) e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                        onMouseLeave={e => { if (!resumingId) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                       >
-                        <CheckCircle size={13} style={{ color: '#4caf7d', flexShrink: 0 }} />
-                        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.project_title}
-                        </div>
-                      </button>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveEdit(item.project_id, 'project');
+                              if (e.key === 'Escape') { setEditingId(null); setEditingTitle(''); }
+                            }}
+                            onBlur={() => handleSaveEdit(item.project_id, 'project')}
+                            autoFocus
+                            style={{
+                              flex: 1,
+                              background: 'rgba(255,255,255,0.1)',
+                              border: '1px solid rgba(255,255,255,0.2)',
+                              borderRadius: 3,
+                              padding: '4px 6px',
+                              color: '#fff',
+                              fontSize: 11,
+                              fontWeight: 500,
+                              outline: 'none',
+                            }}
+                          />
+                        ) : (
+                          <>
+                            <div
+                              onClick={() => !isResuming && handleResumeCompleted(item)}
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                cursor: isResuming ? 'not-allowed' : 'pointer',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: 'rgba(255,255,255,0.85)',
+                              }}
+                            >
+                              {item.project_title}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(menuOpen ? null : item.run_id);
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                padding: 4,
+                                cursor: 'pointer',
+                                color: 'rgba(255,255,255,0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderRadius: 3,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.9)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+                            >
+                              <MoreVertical size={14} />
+                            </button>
+                          </>
+                        )}
+                        {menuOpen && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '100%',
+                              right: 8,
+                              marginTop: 4,
+                              background: '#2d3748',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: 6,
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                              zIndex: 1000,
+                              minWidth: 140,
+                            }}
+                          >
+                            <button
+                              onClick={(e) => handleEditClick(item.run_id, item.project_title, e)}
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.85)',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <Edit2 size={12} />
+                              Rename
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.85)',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <Star size={12} />
+                              Pin
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.85)',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <FileText size={12} />
+                              Archive
+                            </button>
+                            <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+                            <button
+                              onClick={(e) => handleDeleteClick(item.run_id, 'run', item.project_title, e)}
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#e05252',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,82,82,0.1)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <Trash2 size={12} />
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -493,35 +945,6 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* Recent Sessions */}
-      {!collapsed && recentSessions.length > 0 && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', padding: '14px 16px' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.45)', marginBottom: 10 }}>
-            RECENT SESSIONS
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {recentSessions.slice(0, 3).map((s) => (
-              <div key={s.id}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {s.title}
-                </div>
-                <span style={{
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  color: '#fff',
-                  background: STATUS_COLORS[s.status],
-                  borderRadius: 4,
-                  padding: '2px 6px',
-                }}>
-                  {STATUS_LABELS[s.status]}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Footer: email + sign out */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', padding: collapsed ? '12px 0' : '12px 16px', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', gap: 8 }}>
         {!collapsed && email && (
@@ -553,5 +976,76 @@ export default function Sidebar({
         </button>
       </div>
     </aside>
+
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirm && (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+        }}
+        onClick={() => setShowDeleteConfirm(null)}
+      >
+        <div
+          style={{
+            background: '#2d3748',
+            borderRadius: 8,
+            padding: '24px',
+            maxWidth: 400,
+            width: '90%',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#fff' }}>
+            Delete {showDeleteConfirm.type}?
+          </h3>
+          <p style={{ margin: '0 0 20px', fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>
+            Are you sure you want to delete <strong>{showDeleteConfirm.title}</strong>? This action cannot be undone.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setShowDeleteConfirm(null)}
+              style={{
+                padding: '8px 16px',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                borderRadius: 6,
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmDelete}
+              style={{
+                padding: '8px 16px',
+                background: '#e05252',
+                border: 'none',
+                borderRadius: 6,
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 }

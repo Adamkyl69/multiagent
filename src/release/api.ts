@@ -187,3 +187,102 @@ export async function generateProjectFromConversation(
     method: 'POST',
   });
 }
+
+export interface CompletedDebateListItem {
+  run_id: string;
+  project_id: string;
+  project_title: string;
+  status: string;
+  completed_at: string;
+  actual_cost_cents: number;
+  summary: string | null;
+  verdict: string | null;
+}
+
+export interface FullDebateDetails {
+  run: RunResponse;
+  project_title: string;
+  project_objective: string;
+  agents: any[];
+  flow: any[];
+  transcript: TranscriptMessageResponse[];
+  final_output: FinalOutputResponse | null;
+}
+
+export interface InProgressItem {
+  id: string;
+  type: 'conversation' | 'project' | 'run';
+  title: string;
+  stage: string;
+  completeness: number;
+  updated_at: string | null;
+  status: string;
+  project_id?: string;
+  run_id?: string;
+}
+
+export async function listInProgressSessions(token: string): Promise<InProgressItem[]> {
+  return request<InProgressItem[]>('/api/v1/sessions/in-progress', token, { method: 'GET' });
+}
+
+export async function getProject(token: string, projectId: string): Promise<ProjectResponse> {
+  return request<ProjectResponse>(`/api/v1/projects/${projectId}`, token, { method: 'GET' });
+}
+
+export async function listCompletedDebates(
+  token: string,
+  limit: number = 50,
+): Promise<CompletedDebateListItem[]> {
+  return request<CompletedDebateListItem[]>(`/api/v1/runs/completed?limit=${limit}`, token, {
+    method: 'GET',
+  });
+}
+
+export async function getFullDebateDetails(
+  token: string,
+  runId: string,
+): Promise<FullDebateDetails> {
+  return request<FullDebateDetails>(`/api/v1/runs/${runId}/full`, token, {
+    method: 'GET',
+  });
+}
+
+export async function updateConversationTitle(
+  token: string,
+  sessionId: string,
+  title: string,
+): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/v1/conversations/${sessionId}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteConversation(token: string, sessionId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/v1/conversations/${sessionId}`, token, {
+    method: 'DELETE',
+  });
+}
+
+export async function updateProjectTitle(
+  token: string,
+  projectId: string,
+  title: string,
+): Promise<ProjectResponse> {
+  return request<ProjectResponse>(`/api/v1/projects/${projectId}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteProject(token: string, projectId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/v1/projects/${projectId}`, token, {
+    method: 'DELETE',
+  });
+}
+
+export async function deleteRun(token: string, runId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/v1/runs/${runId}`, token, {
+    method: 'DELETE',
+  });
+}
