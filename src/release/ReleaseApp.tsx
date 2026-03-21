@@ -141,9 +141,9 @@ export default function ReleaseApp() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <div style={{ minHeight: '100vh', background: '#06080F', color: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         <Loader2 style={{ width: 20, height: 20, animation: 'spin 1s linear infinite' }} />
-        <span style={{ fontSize: 14, color: '#9E9E9E' }}>Loading session...</span>
+        <span style={{ fontSize: 14, color: '#64748B' }}>Loading session...</span>
       </div>
     );
   }
@@ -153,7 +153,54 @@ export default function ReleaseApp() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#111827' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#06080F', position: 'relative', overflow: 'hidden' }}>
+      {/* Background orbs */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute',
+          width: 600,
+          height: 600,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, #6366F1 0%, transparent 70%)',
+          filter: 'blur(80px)',
+          opacity: 0.22,
+          top: -200,
+          left: -100,
+        }} />
+        <div style={{
+          position: 'absolute',
+          width: 500,
+          height: 500,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, #F97316 0%, transparent 70%)',
+          filter: 'blur(80px)',
+          opacity: 0.14,
+          bottom: -150,
+          right: 200,
+        }} />
+        <div style={{
+          position: 'absolute',
+          width: 350,
+          height: 350,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, #22D3EE 0%, transparent 70%)',
+          filter: 'blur(80px)',
+          opacity: 0.08,
+          top: '40%',
+          left: '38%',
+        }} />
+      </div>
+
+      {/* Dot grid */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 0,
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px)',
+        backgroundSize: '28px 28px',
+      }} />
+
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
@@ -170,14 +217,14 @@ export default function ReleaseApp() {
         onResumeRun={handleResumeRun}
       />
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
         {error && (
           <div style={{ margin: '16px 24px 0', borderRadius: 10, border: '1px solid rgba(224,82,82,0.3)', background: 'rgba(224,82,82,0.08)', padding: '10px 16px', fontSize: 13, color: '#fca5a5' }}>
             {error}
           </div>
         )}
 
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           {project && run ? (
             <RunScreen token={token} project={project} initialRun={run} onBack={() => setRun(null)} />
           ) : project ? (
