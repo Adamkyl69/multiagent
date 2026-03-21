@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   generateProjectFromConversation,
+  getConversation,
   sendConversationMessage,
   startConversation,
 } from './api';
@@ -14,6 +15,7 @@ import type {
 interface ChatInterfaceProps {
   token: string;
   onProjectGenerated: (project: ProjectResponse) => void;
+  resumeSessionId?: string | null;
 }
 
 const getStageLabel = (stage: string): string => {
@@ -38,7 +40,7 @@ const getStakesBadgeColor = (stakes: string): string => {
   return colors[stakes] || 'bg-slate-600';
 };
 
-export default function ChatInterface({ token, onProjectGenerated }: ChatInterfaceProps) {
+export default function ChatInterface({ token, onProjectGenerated, resumeSessionId }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resuming, setResuming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -56,6 +59,27 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Resume an existing session on mount if resumeSessionId is provided
+  useEffect(() => {
+    if (!resumeSessionId) return;
+    async function loadSession() {
+      setResuming(true);
+      setError(null);
+      try {
+        const history = await getConversation(token, resumeSessionId!);
+        setSessionId(history.session_id);
+        setMessages(history.messages as ConversationMessage[]);
+        setContext(history.context as CollectedContext);
+        setCanGenerate(history.can_generate);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to resume session');
+      } finally {
+        setResuming(false);
+      }
+    }
+    loadSession();
+  }, [resumeSessionId]);
 
   const handleStart = async (initialMessage: string) => {
     if (!token || !initialMessage.trim()) return;
@@ -144,47 +168,168 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
     }
   };
 
+  const stakesBgColor = (stakes: string) => {
+    const map: Record<string, string> = { low: '#4caf7d', medium: '#d4a017', high: '#CC5500', critical: '#e05252' };
+    return map[stakes] || '#9E9E9E';
+  };
+
+  if (resuming) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'transparent', color: '#64748B', gap: 12, flexDirection: 'column' }}>
+        <div style={{ width: 32, height: 32, border: '3px solid rgba(99,102,241,0.2)', borderTopColor: '#6366F1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontSize: 14 }}>Resuming your session…</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-screen bg-slate-900">
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+    <div style={{ display: 'flex', height: '100vh', background: 'transparent', overflow: 'hidden' }}>
+      {/* Chat area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {messages.length === 0 && (
-            <div className="text-center py-12 max-w-xl mx-auto">
-              <h2 className="text-3xl font-bold text-slate-100 mb-4">
+            <div style={{ textAlign: 'center', paddingTop: 80, paddingBottom: 40, maxWidth: 580, margin: '0 auto' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(99,102,241,0.1)',
+                border: '1px solid rgba(99,102,241,0.2)',
+                borderRadius: 24,
+                padding: '8px 18px',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                color: '#818CF8',
+                marginBottom: 28,
+              }}>
+                <span style={{ fontSize: 16 }}>✦</span>
+                DECISION INTELLIGENCE
+              </div>
+              <h1 style={{ 
+                fontSize: 48, 
+                fontWeight: 700, 
+                color: '#F1F5F9', 
+                margin: '0 0 20px', 
+                lineHeight: 1.2,
+                fontFamily: 'Space Grotesk, system-ui, sans-serif',
+              }}>
                 What decision are you facing?
-              </h2>
-              <p className="text-slate-400 mb-8">
-                Just describe your decision or problem. I'll ask a few questions to understand it fully, then assemble expert perspectives to help you decide.
+              </h1>
+              <p style={{ 
+                fontSize: 15.5, 
+                color: '#64748B', 
+                margin: '0 0 48px', 
+                lineHeight: 1.7,
+                fontFamily: 'DM Sans, system-ui, sans-serif',
+              }}>
+                Describe your decision or dilemma. I'll ask a few targeted questions, frame it clearly, then assemble expert perspectives to help you decide.
               </p>
-              <div className="text-left space-y-2 text-sm text-slate-500">
-                <p className="font-medium text-slate-400">Examples:</p>
-                <p>"Should I quit my job and join this startup?"</p>
-                <p>"Which pricing model should I use for my SaaS?"</p>
-                <p>"Should I move to Berlin or stay in Stockholm?"</p>
-                <p>"Is this product idea worth pursuing?"</p>
+              
+              <div style={{ textAlign: 'left', marginBottom: 24 }}>
+                <p style={{ 
+                  fontSize: 11, 
+                  fontWeight: 600, 
+                  letterSpacing: '0.08em', 
+                  color: '#475569', 
+                  marginBottom: 16,
+                  textTransform: 'uppercase',
+                }}>Quick Start Examples</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { num: '1', text: 'Should I quit my job and join this startup?' },
+                    { num: '2', text: 'Which pricing model should I use for my SaaS?' },
+                    { num: '3', text: 'Should I move to Berlin or stay in Stockholm?' },
+                    { num: '4', text: 'Is this product idea worth pursuing?' },
+                  ].map((ex) => (
+                    <div
+                      key={ex.num}
+                      onClick={() => setInput(ex.text)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        borderRadius: 10,
+                        padding: '14px 16px',
+                        cursor: 'pointer',
+                        transition: 'all 180ms',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                        e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                      }}
+                    >
+                      <span style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        background: 'rgba(99,102,241,0.15)',
+                        color: '#818CF8',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}>{ex.num}</span>
+                      <span style={{ 
+                        fontSize: 14, 
+                        color: '#94A3B8',
+                        fontFamily: 'DM Sans, system-ui, sans-serif',
+                      }}>{ex.text}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`max-w-2xl rounded-lg px-4 py-3 ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 text-slate-100 border border-slate-700'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+            <div key={msg.id} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: 720, margin: messages.length > 0 ? '0 auto' : '0', width: '100%' }}>
+              <div style={{
+                maxWidth: 600,
+                borderRadius: 14,
+                padding: '14px 18px',
+                background: msg.role === 'user' ? 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)' : 'rgba(255,255,255,0.03)',
+                border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                color: '#F1F5F9',
+                boxShadow: msg.role === 'user' ? '0 4px 12px rgba(99,102,241,0.2)' : 'none',
+              }}>
+                <p style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 14.5, lineHeight: 1.65, fontFamily: 'DM Sans, system-ui, sans-serif' }}>{msg.content}</p>
 
                 {msg.role === 'system' && msg.metadata?.quick_replies && (
-                  <div className="flex flex-wrap gap-2 mt-3">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
                     {msg.metadata.quick_replies.map((reply) => (
                       <button
                         key={reply}
                         onClick={() => handleQuickReply(reply)}
-                        className="px-3 py-1 text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-full transition-colors"
                         disabled={loading}
+                        style={{
+                          padding: '7px 14px',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          background: 'rgba(99,102,241,0.12)',
+                          border: '1px solid rgba(99,102,241,0.25)',
+                          borderRadius: 24,
+                          color: '#A5B4FC',
+                          cursor: 'pointer',
+                          transition: 'all 180ms',
+                          fontFamily: 'DM Sans, system-ui, sans-serif',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(99,102,241,0.2)';
+                          e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'rgba(99,102,241,0.12)';
+                          e.currentTarget.style.borderColor = 'rgba(99,102,241,0.25)';
+                        }}
                       >
                         {reply}
                       </button>
@@ -193,12 +338,12 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
                 )}
 
                 {msg.role === 'system' && msg.metadata?.suggestions?.agents && (
-                  <div className="mt-4 space-y-2">
+                  <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {msg.metadata.suggestions.agents.map((agent, idx) => (
-                      <div key={idx} className="bg-slate-700/50 rounded p-3 text-sm">
-                        <div className="font-semibold text-blue-400">{agent.name}</div>
-                        <div className="text-slate-300">{agent.role}</div>
-                        <div className="text-slate-400 text-xs mt-1">{agent.reason}</div>
+                      <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', fontSize: 13 }}>
+                        <div style={{ fontWeight: 600, color: '#F1F5F9', fontFamily: 'DM Sans, system-ui, sans-serif' }}>{agent.name}</div>
+                        <div style={{ color: '#94A3B8', marginTop: 3, fontSize: 13 }}>{agent.role}</div>
+                        <div style={{ color: '#64748B', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>{agent.reason}</div>
                       </div>
                     ))}
                   </div>
@@ -208,19 +353,17 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
           ))}
 
           {loading && (
-            <div className="flex justify-start">
-              <div className="bg-slate-800 text-slate-100 border border-slate-700 rounded-lg px-4 py-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-75"></div>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-150"></div>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '14px 18px', display: 'flex', gap: 7, alignItems: 'center' }}>
+                {[0, 150, 300].map((delay) => (
+                  <span key={delay} style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366F1', opacity: 0.7, animation: `pulse 1.2s ${delay}ms infinite` }} />
+                ))}
               </div>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-900/20 border border-red-700 text-red-400 rounded-lg px-4 py-3">
+            <div style={{ background: 'rgba(224,82,82,0.08)', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 10, padding: '12px 18px', fontSize: 13.5, color: '#FCA5A5', maxWidth: 720, margin: '0 auto', width: '100%' }}>
               {error}
             </div>
           )}
@@ -228,172 +371,214 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t border-slate-700 p-4 bg-slate-800">
-          <div className="flex gap-2">
+        {/* Input bar */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 24px', background: 'rgba(11,14,26,0.8)', backdropFilter: 'blur(12px)' }}>
+          <div style={{ display: 'flex', gap: 12, maxWidth: 720, margin: '0 auto' }}>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={sessionId ? 'Type your message...' : 'What decision do you need to make?'}
-              className="flex-1 bg-slate-700 text-slate-100 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={sessionId ? 'Type your response...' : 'What decision do you need to make?'}
               disabled={loading || generating}
+              style={{
+                flex: 1,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 12,
+                padding: '13px 18px',
+                fontSize: 14.5,
+                color: '#F1F5F9',
+                outline: 'none',
+                fontFamily: 'DM Sans, system-ui, sans-serif',
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+              }}
             />
             <button
               onClick={sessionId ? handleSend : () => handleStart(input)}
               disabled={!input.trim() || loading || generating}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-medium transition-colors"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '13px 26px',
+                background: !input.trim() || loading || generating ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)',
+                border: 'none',
+                borderRadius: 12,
+                color: !input.trim() || loading || generating ? '#475569' : '#fff',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
+                transition: 'all 180ms',
+                fontFamily: 'DM Sans, system-ui, sans-serif',
+                boxShadow: input.trim() && !loading && !generating ? '0 4px 12px rgba(99,102,241,0.25)' : 'none',
+              }}
+              onMouseEnter={e => { 
+                if (input.trim() && !loading && !generating) {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(99,102,241,0.35)';
+                }
+              }}
+              onMouseLeave={e => { 
+                if (input.trim() && !loading && !generating) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.25)';
+                }
+              }}
             >
-              Send
+              <span>Send</span>
+              <span style={{ fontSize: 16 }}>→</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="w-80 bg-slate-800 border-l border-slate-700 p-6 overflow-y-auto">
-        <h3 className="text-lg font-bold text-slate-100 mb-2">Decision Analysis</h3>
-        
-        {context && (
-          <div className="text-xs text-blue-400 mb-4">
-            {getStageLabel(context.stage)}
-          </div>
+      {/* Right context panel */}
+      <div style={{ width: 300, background: 'rgba(11,14,26,0.6)', borderLeft: '1px solid rgba(255,255,255,0.06)', padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, backdropFilter: 'blur(12px)' }}>
+        <div>
+          <h3 style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: '#64748B', margin: '0 0 6px', textTransform: 'uppercase', fontFamily: 'DM Sans, system-ui, sans-serif' }}>Decision Analysis</h3>
+          {context && (
+            <div style={{ fontSize: 13, color: '#818CF8', fontWeight: 600, fontFamily: 'DM Sans, system-ui, sans-serif' }}>{getStageLabel(context.stage)}</div>
+          )}
+        </div>
+
+        {!context && (
+          <p style={{ fontSize: 13.5, color: '#64748B', margin: 0, fontFamily: 'DM Sans, system-ui, sans-serif' }}>Ask your question to get started.</p>
         )}
 
         {context && (
-          <div className="space-y-4">
+          <>
             {/* Classification badges */}
-            {context.classification && context.classification.decision_type && (
-              <div className="flex flex-wrap gap-1">
-                <span className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+            {context.classification?.decision_type && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <span style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, background: 'rgba(91,126,145,0.2)', color: '#D6E4E8', borderRadius: 5 }}>
                   {context.classification.decision_type}
                 </span>
                 {context.classification.stakes && (
-                  <span className={`px-2 py-0.5 text-xs text-white rounded ${getStakesBadgeColor(context.classification.stakes)}`}>
+                  <span style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, background: stakesBgColor(context.classification.stakes), color: '#fff', borderRadius: 5 }}>
                     {context.classification.stakes} stakes
                   </span>
                 )}
                 {context.classification.complexity && (
-                  <span className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+                  <span style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, background: 'rgba(91,126,145,0.2)', color: '#D6E4E8', borderRadius: 5 }}>
                     {context.classification.complexity}
                   </span>
                 )}
               </div>
             )}
 
-            {/* Original question */}
+            {/* Raw question */}
             {context.raw_question && (
               <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Your Question</div>
-                <div className="text-sm text-slate-200 italic">"{context.raw_question}"</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#9E9E9E', marginBottom: 6, textTransform: 'uppercase' }}>Your Question</div>
+                <div style={{ fontSize: 13, color: '#cbd5e1', fontStyle: 'italic', lineHeight: 1.5 }}>"{context.raw_question}"</div>
               </div>
             )}
 
             {/* Decision Frame */}
-            {context.decision_frame && context.decision_frame.decision_statement && (
-              <div className="bg-slate-700/50 rounded-lg p-3 space-y-2">
-                <div className="text-xs font-semibold text-blue-400 uppercase">Decision Frame</div>
-                
-                <div>
-                  <div className="text-xs text-slate-400">Decision</div>
-                  <div className="text-sm text-slate-200">{context.decision_frame.decision_statement}</div>
-                </div>
-                
-                {context.decision_frame.alternatives && context.decision_frame.alternatives.length > 0 && (
-                  <div>
-                    <div className="text-xs text-slate-400">Alternatives</div>
-                    <div className="text-sm text-slate-200">
-                      {context.decision_frame.alternatives.map((alt, idx) => (
-                        <div key={idx}>• {alt}</div>
-                      ))}
-                    </div>
+            {context.decision_frame?.decision_statement && (
+              <div style={{ background: 'rgba(91,126,145,0.1)', border: '1px solid rgba(91,126,145,0.2)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#5B7E91', textTransform: 'uppercase' }}>Decision Frame</div>
+                {[
+                  { label: 'Decision', value: context.decision_frame.decision_statement },
+                  { label: 'Objective', value: context.decision_frame.primary_objective },
+                ].map(({ label, value }) => value ? (
+                  <div key={label}>
+                    <div style={{ fontSize: 10, color: '#9E9E9E', marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: '#e2e8f0', lineHeight: 1.5 }}>{value}</div>
                   </div>
-                )}
-                
-                {context.decision_frame.primary_objective && (
+                ) : null)}
+                {context.decision_frame.alternatives?.length ? (
                   <div>
-                    <div className="text-xs text-slate-400">Objective</div>
-                    <div className="text-sm text-slate-200">{context.decision_frame.primary_objective}</div>
+                    <div style={{ fontSize: 10, color: '#9E9E9E', marginBottom: 3 }}>Alternatives</div>
+                    {context.decision_frame.alternatives.map((alt, i) => (
+                      <div key={i} style={{ fontSize: 12, color: '#e2e8f0' }}>• {alt}</div>
+                    ))}
                   </div>
-                )}
-                
-                {context.decision_frame.constraints && context.decision_frame.constraints.length > 0 && (
+                ) : null}
+                {context.decision_frame.constraints?.length ? (
                   <div>
-                    <div className="text-xs text-slate-400">Constraints</div>
-                    <div className="text-sm text-slate-200">
-                      {context.decision_frame.constraints.map((c, idx) => (
-                        <div key={idx}>• {c}</div>
-                      ))}
-                    </div>
+                    <div style={{ fontSize: 10, color: '#9E9E9E', marginBottom: 3 }}>Constraints</div>
+                    {context.decision_frame.constraints.map((c, i) => (
+                      <div key={i} style={{ fontSize: 12, color: '#e2e8f0' }}>• {c}</div>
+                    ))}
                   </div>
-                )}
-                
-                {context.decision_frame.evaluation_criteria && context.decision_frame.evaluation_criteria.length > 0 && (
+                ) : null}
+                {context.decision_frame.evaluation_criteria?.length ? (
                   <div>
-                    <div className="text-xs text-slate-400">Evaluation Criteria</div>
-                    <div className="text-sm text-slate-200">
-                      {context.decision_frame.evaluation_criteria.map((c, idx) => (
-                        <div key={idx}>• {c}</div>
-                      ))}
-                    </div>
+                    <div style={{ fontSize: 10, color: '#9E9E9E', marginBottom: 3 }}>Criteria</div>
+                    {context.decision_frame.evaluation_criteria.map((c, i) => (
+                      <div key={i} style={{ fontSize: 12, color: '#e2e8f0' }}>• {c}</div>
+                    ))}
                   </div>
-                )}
+                ) : null}
               </div>
             )}
 
             {/* Agents */}
-            {context.agents && context.agents.length > 0 && (
+            {context.agents?.length ? (
               <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-2">
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#9E9E9E', textTransform: 'uppercase', marginBottom: 8 }}>
                   Expert Panel ({context.agents.length})
                 </div>
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {context.agents.map((agent, idx) => (
-                    <div key={idx} className="bg-slate-700/50 rounded p-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${
-                          agent.stance === 'pro' ? 'bg-green-500' :
-                          agent.stance === 'con' ? 'bg-red-500' : 'bg-slate-400'
-                        }`} />
-                        <span className="text-sm font-medium text-slate-200">{agent.name}</span>
+                    <div key={idx} style={{ background: 'rgba(91,126,145,0.1)', borderRadius: 8, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                        background: agent.stance === 'pro' ? '#4caf7d' : agent.stance === 'con' ? '#e05252' : '#9E9E9E',
+                      }} />
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{agent.name}</div>
+                        {agent.role && <div style={{ fontSize: 11, color: '#9E9E9E', marginTop: 2 }}>{agent.role}</div>}
                       </div>
-                      {agent.role && (
-                        <div className="text-xs text-slate-400 mt-1 ml-4">{agent.role}</div>
-                      )}
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Progress */}
-            <div className="pt-4 border-t border-slate-700">
-              <div className="text-xs font-semibold text-slate-400 uppercase mb-2">Progress</div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${context.completeness}%` }}
-                />
+            <div style={{ borderTop: '1px solid rgba(91,126,145,0.2)', paddingTop: 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#9E9E9E', textTransform: 'uppercase', marginBottom: 8 }}>Progress</div>
+              <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: '#CC5500', borderRadius: 4, width: `${context.completeness}%`, transition: 'width 0.4s ease' }} />
               </div>
-              <div className="text-xs text-slate-400 mt-1">{context.completeness}%</div>
+              <div style={{ fontSize: 11, color: '#9E9E9E', marginTop: 4 }}>{context.completeness}%</div>
             </div>
 
-            {/* Generate button */}
+            {/* Start Debate button */}
             {canGenerate && (
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="w-full mt-4 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-medium transition-colors"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: generating ? 'rgba(255,255,255,0.06)' : '#CC5500',
+                  border: 'none',
+                  borderRadius: 10,
+                  color: generating ? '#64748b' : '#fff',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: generating ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.04em',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => { if (!generating) e.currentTarget.style.background = '#b34a00'; }}
+                onMouseLeave={e => { if (!generating) e.currentTarget.style.background = '#CC5500'; }}
               >
                 {generating ? 'Starting Debate...' : '🚀 Start Debate'}
               </button>
             )}
-          </div>
-        )}
-
-        {!context && (
-          <p className="text-sm text-slate-400">
-            Ask your question to get started.
-          </p>
+          </>
         )}
       </div>
     </div>
