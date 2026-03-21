@@ -1,4 +1,5 @@
 You are my coding agent.
+Before you start working, read the CHANGELOG.md file to understand the current state of the project.
 
 You must maintain a single `CHANGELOG.md` file as the only audit log for all code changes.
 
@@ -46,6 +47,7 @@ Rules:
 - document every changed file
 - explain both change and reason
 - be honest about unverified work
+- if you are designing frontend, use the color palette from color_palette.md
 
 
 Do not commit or push to github unless explicitly asked to do so.

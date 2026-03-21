@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from datetime import datetime
@@ -12,6 +13,8 @@ from app.models import DebateMessage, DebateRun, FinalOutput, MonthlyUsageSummar
 from app.schemas import FinalOutputResponse, ProjectVersionSnapshot, RunEventResponse, RunResponse, TranscriptMessageResponse
 from app.services.billing import BillingService
 from app.services.llm import LLMService
+
+logger = logging.getLogger(__name__)
 
 
 class RunEventBroker:
@@ -78,142 +81,153 @@ class RunService:
         return self._run_response(run)
 
     async def execute_run(self, run_id: str) -> None:
-        async with self.session_factory() as session:
-            run = await session.scalar(select(DebateRun).where(DebateRun.id == run_id))
-            if run is None:
-                return
+        logger.info(f"Starting execute_run for run_id={run_id}")
+        try:
+            async with self.session_factory() as session:
+                run = await session.scalar(select(DebateRun).where(DebateRun.id == run_id))
+                if run is None:
+                    logger.error(f"Run not found: {run_id}")
+                    return
 
-            try:
-                version = await session.scalar(select(ProjectVersion).where(ProjectVersion.id == run.project_version_id))
-                if version is None:
-                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project version not found.")
+                try:
+                    version = await session.scalar(select(ProjectVersion).where(ProjectVersion.id == run.project_version_id))
+                    if version is None:
+                        logger.error(f"Project version not found: {run.project_version_id}")
+                        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project version not found.")
 
-                snapshot = ProjectVersionSnapshot.model_validate(version.snapshot_json)
-                run.status = "running"
-                run.started_at = utc_now()
-                await session.commit()
-                await self._append_event(session, run.id, "run.started", {"status": run.status, "project_version_id": version.id})
+                    logger.info(f"Loading snapshot for run {run_id}")
+                    snapshot = ProjectVersionSnapshot.model_validate(version.snapshot_json)
+                    logger.info(f"Snapshot loaded: {len(snapshot.agents)} agents, {len(snapshot.flow)} phases")
+                    
+                    run.status = "running"
+                    run.started_at = utc_now()
+                    await session.commit()
+                    await self._append_event(session, run.id, "run.started", {"status": run.status, "project_version_id": version.id})
+                    logger.info(f"Run {run_id} started successfully")
 
-                message_sequence = 0
-                total_cost_cents = 0
-                for phase_index, phase in enumerate(snapshot.flow, start=1):
-                    if await self._is_canceled(session, run.id):
-                        return
-                    await self._append_event(
-                        session,
-                        run.id,
-                        "phase.started",
-                        {"phase": phase.name, "position": phase_index},
-                    )
-                    for agent in snapshot.agents:
+                    message_sequence = 0
+                    total_cost_cents = 0
+                    for phase_index, phase in enumerate(snapshot.flow, start=1):
                         if await self._is_canceled(session, run.id):
                             return
-                        if phase.name == "Final Synthesis" and not agent.capabilities.recommend:
-                            continue
-
-                        transcript_context = await self._transcript_context(session, run.id)
-                        turn_result = await self.llm_service.generate_debate_turn(
-                            snapshot=snapshot,
-                            phase=phase,
-                            agent=agent,
-                            transcript_context=transcript_context,
-                        )
-                        message_sequence += 1
-                        message = DebateMessage(
-                            run_id=run.id,
-                            phase_name=phase.name,
-                            speaker_name=agent.name,
-                            message_type=turn_result.message_type,
-                            content=turn_result.content,
-                            sequence=message_sequence,
-                        )
-                        session.add(message)
-                        await session.flush()
-
-                        total_cost_cents += turn_result.usage.cost_estimate_cents
-                        await self.billing_service.record_usage(
-                            session,
-                            user_id=run.created_by_user_id,
-                            workspace_id=run.workspace_id,
-                            project_id=run.project_id,
-                            run_id=run.id,
-                            provider=turn_result.usage.provider,
-                            model=turn_result.usage.model,
-                            input_tokens=turn_result.usage.input_tokens,
-                            output_tokens=turn_result.usage.output_tokens,
-                            cost_estimate_cents=turn_result.usage.cost_estimate_cents,
-                        )
-                        await session.commit()
                         await self._append_event(
                             session,
                             run.id,
-                            "message.created",
-                            {
-                                "phase": phase.name,
-                                "speaker": agent.name,
-                                "role": agent.role,
-                                "content": turn_result.content,
-                                "sequence": message.sequence,
-                                "message_type": turn_result.message_type,
-                            },
+                            "phase.started",
+                            {"phase": phase.name, "position": phase_index},
                         )
-                    await self._append_event(session, run.id, "phase.completed", {"phase": phase.name, "position": phase_index})
+                        for agent in snapshot.agents:
+                            if await self._is_canceled(session, run.id):
+                                return
+                            if phase.name == "Final Synthesis" and not agent.capabilities.recommend:
+                                continue
 
-                synthesis_context = await self._transcript_context(session, run.id, max_messages=200)
-                synthesis_result = await self.llm_service.generate_final_synthesis(
-                    snapshot=snapshot,
-                    transcript_context=synthesis_context,
-                )
-                total_cost_cents += synthesis_result.usage.cost_estimate_cents
-                await self.billing_service.record_usage(
-                    session,
-                    user_id=run.created_by_user_id,
-                    workspace_id=run.workspace_id,
-                    project_id=run.project_id,
-                    run_id=run.id,
-                    provider=synthesis_result.usage.provider,
-                    model=synthesis_result.usage.model,
-                    input_tokens=synthesis_result.usage.input_tokens,
-                    output_tokens=synthesis_result.usage.output_tokens,
-                    cost_estimate_cents=synthesis_result.usage.cost_estimate_cents,
-                )
+                            transcript_context = await self._transcript_context(session, run.id)
+                            turn_result = await self.llm_service.generate_debate_turn(
+                                snapshot=snapshot,
+                                phase=phase,
+                                agent=agent,
+                                transcript_context=transcript_context,
+                            )
+                            message_sequence += 1
+                            message = DebateMessage(
+                                run_id=run.id,
+                                phase_name=phase.name,
+                                speaker_name=agent.name,
+                                message_type=turn_result.message_type,
+                                content=turn_result.content,
+                                sequence=message_sequence,
+                            )
+                            session.add(message)
+                            await session.flush()
 
-                final_output = FinalOutput(
-                    run_id=run.id,
-                    summary=synthesis_result.summary,
-                    verdict=synthesis_result.verdict,
-                    recommendations_json=synthesis_result.recommendations,
-                    raw_output_json=synthesis_result.raw_output,
-                )
-                session.add(final_output)
-                run.status = "completed"
-                run.actual_cost_cents = total_cost_cents
-                run.completed_at = utc_now()
-                summary_row = await session.scalar(
-                    select(MonthlyUsageSummary).where(
-                        MonthlyUsageSummary.workspace_id == run.workspace_id,
-                        MonthlyUsageSummary.month_key == datetime.utcnow().strftime("%Y-%m"),
+                            total_cost_cents += turn_result.usage.cost_estimate_cents
+                            await self.billing_service.record_usage(
+                                session,
+                                user_id=run.created_by_user_id,
+                                workspace_id=run.workspace_id,
+                                project_id=run.project_id,
+                                run_id=run.id,
+                                provider=turn_result.usage.provider,
+                                model=turn_result.usage.model,
+                                input_tokens=turn_result.usage.input_tokens,
+                                output_tokens=turn_result.usage.output_tokens,
+                                cost_estimate_cents=turn_result.usage.cost_estimate_cents,
+                            )
+                            await session.commit()
+                            await self._append_event(
+                                session,
+                                run.id,
+                                "message.created",
+                                {
+                                    "phase": phase.name,
+                                    "speaker": agent.name,
+                                    "role": agent.role,
+                                    "content": turn_result.content,
+                                    "sequence": message.sequence,
+                                    "message_type": turn_result.message_type,
+                                },
+                            )
+                        await self._append_event(session, run.id, "phase.completed", {"phase": phase.name, "position": phase_index})
+
+                    synthesis_context = await self._transcript_context(session, run.id, max_messages=200)
+                    synthesis_result = await self.llm_service.generate_final_synthesis(
+                        snapshot=snapshot,
+                        transcript_context=synthesis_context,
                     )
-                )
-                if summary_row is not None:
-                    summary_row.total_runs += 1
-                await session.commit()
-                await self._append_event(
-                    session,
-                    run.id,
-                    "run.completed",
-                    {"status": run.status, "summary": synthesis_result.summary, "verdict": synthesis_result.verdict},
-                )
-            except Exception as exc:
-                run.status = "failed"
-                run.completed_at = utc_now()
-                await session.commit()
-                await self._append_event(
-                    session,
-                    run.id,
-                    "run.failed",
-                    {"status": run.status, "error": str(exc)},
-                )
+                    total_cost_cents += synthesis_result.usage.cost_estimate_cents
+                    await self.billing_service.record_usage(
+                        session,
+                        user_id=run.created_by_user_id,
+                        workspace_id=run.workspace_id,
+                        project_id=run.project_id,
+                        run_id=run.id,
+                        provider=synthesis_result.usage.provider,
+                        model=synthesis_result.usage.model,
+                        input_tokens=synthesis_result.usage.input_tokens,
+                        output_tokens=synthesis_result.usage.output_tokens,
+                        cost_estimate_cents=synthesis_result.usage.cost_estimate_cents,
+                    )
+
+                    final_output = FinalOutput(
+                        run_id=run.id,
+                        summary=synthesis_result.summary,
+                        verdict=synthesis_result.verdict,
+                        recommendations_json=synthesis_result.recommendations,
+                        raw_output_json=synthesis_result.raw_output,
+                    )
+                    session.add(final_output)
+                    run.status = "completed"
+                    run.actual_cost_cents = total_cost_cents
+                    run.completed_at = utc_now()
+                    summary_row = await session.scalar(
+                        select(MonthlyUsageSummary).where(
+                            MonthlyUsageSummary.workspace_id == run.workspace_id,
+                            MonthlyUsageSummary.month_key == datetime.utcnow().strftime("%Y-%m"),
+                        )
+                    )
+                    if summary_row is not None:
+                        summary_row.total_runs += 1
+                    await session.commit()
+                    await self._append_event(
+                        session,
+                        run.id,
+                        "run.completed",
+                        {"status": run.status, "summary": synthesis_result.summary, "verdict": synthesis_result.verdict},
+                    )
+                except Exception as exc:
+                    logger.error(f"Run {run_id} failed with exception: {exc}", exc_info=True)
+                    run.status = "failed"
+                    run.completed_at = utc_now()
+                    await session.commit()
+                    await self._append_event(
+                        session,
+                        run.id,
+                        "run.failed",
+                        {"status": run.status, "error": str(exc)},
+                    )
+        except Exception as exc:
+            logger.error(f"Unhandled exception in execute_run for {run_id}: {exc}", exc_info=True)
 
     async def stop_run(self, session: AsyncSession, workspace_id: str, run_id: str) -> RunResponse:
         run = await session.scalar(select(DebateRun).where(DebateRun.id == run_id, DebateRun.workspace_id == workspace_id))

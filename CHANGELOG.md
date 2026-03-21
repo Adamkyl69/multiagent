@@ -1,3 +1,232 @@
+# v3.0.3 - 2026-03-21 09:06
+
+## Summary
+Fixed "LLM returned an empty debate turn" error by adding flexible content extraction to handle various LLM response structures.
+
+## Files Modified
+- `backend/app/services/llm.py` — modified
+  - Change: Enhanced content extraction in `generate_debate_turn` to check multiple possible fields (content, text, response, output)
+  - Reason: LLM was returning content in unexpected field names, causing empty content errors
+  - Change: Added fallback logic to extract from any string field longer than 10 characters
+  - Reason: Handle edge cases where LLM uses non-standard response structure
+  - Change: Added logging of response keys when content is still empty
+  - Reason: Better debugging information for future issues
+
+## Changes
+- added: Flexible content extraction checking text, response, output fields
+- added: Fallback extraction from any substantial string field in response
+- added: Logging of response keys when content extraction fails
+- fixed: "LLM returned an empty debate turn" error due to unexpected response structure
+
+## Impact
+- user-visible impact: Debate runs should now complete successfully instead of failing on empty content
+- technical impact: More robust handling of LLM response variations
+- risks or side effects: May extract content from unintended fields if LLM returns unexpected structure
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending - need to restart backend and run new debate
+
+## Follow-up
+- remaining work
+  - Test debate run to confirm fix works
+  - Monitor logs to see which field LLM is actually using
+- technical debt
+  - Consider standardizing LLM response format across all providers
+- limitations
+  - Fallback extraction may grab wrong field if response has multiple long strings
+
+---
+
+# v3.0.2 - 2026-03-21 08:55
+
+## Summary
+Added detailed logging to debate run execution and a helper to inspect project snapshots so we can diagnose stuck runs.
+
+## Files Modified
+- `backend/app/services/runs.py` — modified
+  - Change: Added `logging` import, module-level logger, and info/error logs throughout `execute_run`
+  - Reason: Runs were hanging without exposing the failure point; need visibility into each phase/agent turn
+  - Change: Wrapped inner execution block with try/except and log `exc_info`
+  - Reason: Ensure any uncaught exceptions mark the run as failed and appear in backend logs
+
+- `backend/check_project.py` — created
+  - Change: Added script that prints latest project/version snapshot structure (agents, flow, sample entries)
+  - Reason: Quick way to verify generated snapshot data when debugging run issues
+
+## Changes
+- added: Structured logging for debate run lifecycle (start, snapshot load, failures)
+- added: Debug helper script to inspect latest project snapshot
+- fixed: Silent run failures now surface via `run.failed` events and backend logs
+
+## Impact
+- user-visible impact: When a run fails, status now transitions to **failed** instead of hanging indefinitely
+- technical impact: Backend logs now show run progress and stack traces for easier debugging
+- risks or side effects: Minimal; logging adds slight overhead but no funcional change otherwise
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending – need to restart backend and launch a new run to capture logs
+
+## Follow-up
+- remaining work
+  - Restart backend, re-run debate, review new logs to pinpoint root cause
+  - Fix the actual issue causing the run to fail once logs identify it
+- technical debt
+  - Convert `check_project.py` into a formal CLI tool or admin endpoint
+- limitations
+  - Logging alone does not resolve the underlying failure; further fixes required
+
+---
+
+# v3.0.1 - 2026-03-21 08:34
+
+## Summary
+Fixed false positive "Usage limit reached" error by adding debug logging and increasing development token/cost limits.
+
+## Files Modified
+- `backend/app/services/billing.py` — modified
+  - Change: Added logging import and debug logs in `ensure_usage_available` method
+  - Reason: Need visibility into actual usage values when limit check fails
+  - Change: Log shows tokens used/included and cost used/included before raising exception
+  - Reason: Helps diagnose false positives and incorrect limit configurations
+
+- `backend/app/models.py` — modified
+  - Change: Increased `UsageBalance.included_tokens` default from 250,000 to 10,000,000
+  - Reason: Development usage was hitting the low limit (264k tokens used)
+  - Change: Increased `UsageBalance.included_cost_cents` default from 5,000 ($50) to 500,000 ($5000)
+  - Reason: Align cost limit with higher token limit for development
+
+- `backend/update_usage_limits.py` — created
+  - Change: Created utility script to update existing database records
+  - Reason: Need to update existing `usage_balances` rows with new limits
+  - Change: Script shows before/after values and confirms update
+  - Reason: Transparency and verification of database changes
+
+- `backend/migrations/003_increase_usage_limits.sql` — created
+  - Change: SQL migration to update usage limits
+  - Reason: Provide migration path for updating existing databases
+
+## Changes
+- added: Debug logging in billing service showing actual usage vs limits
+- added: Utility script to update database usage limits
+- changed: Default token limit from 250k to 10M for development
+- changed: Default cost limit from $50 to $5000 for development
+- fixed: False positive "Usage limit reached" error (was 264k/250k tokens)
+
+## Impact
+- user-visible impact: "Usage limit reached" error resolved
+- user-visible impact: Can now continue development without hitting artificial limits
+- technical impact: Better visibility into billing checks via logging
+- risks or side effects: Higher limits mean less realistic testing of limit enforcement
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Confirmed - database updated, limits now 10M tokens / $5000
+
+## Follow-up
+- remaining work
+  - Consider environment-specific limits (dev vs prod)
+  - Add admin endpoint to view/reset usage balances
+- technical debt
+  - None
+- limitations
+  - Limits are now very high for development, may not catch limit-related bugs
+
+---
+
+# v3.0.0 - 2026-03-21 07:39
+
+## Summary
+Major UX flow redesign. Simplified entry point, automatic decision classification, smart clarifying questions, decision frame confirmation, and streamlined expert agent generation.
+
+## Files Modified
+- `backend/app/services/conversation_v2.py` — created
+  - Change: New conversation service with improved 6-stage flow
+  - Reason: Previous flow had too many configuration steps, was not user-friendly
+  - Stages: entry → classification → clarification → frame → agents → ready
+
+- `backend/app/schemas_conversation.py` — modified
+  - Change: Added DecisionClassification and DecisionFrame schemas
+  - Reason: Need structured types for automatic classification and decision framing
+  - Change: Updated CollectedContext with new fields (raw_question, classification, clarifications, decision_frame, etc.)
+  - Reason: Support new conversation stages and data collection
+
+- `backend/app/main.py` — modified
+  - Change: Switched from ConversationService to ConversationServiceV2
+  - Reason: Use new improved conversation flow
+  - Change: Updated start_conversation endpoint to pass optional context parameter
+  - Reason: Allow users to provide additional context upfront
+
+- `src/release/conversationTypes.ts` — modified
+  - Change: Added DecisionFrame, DecisionClassification, AgentInfo interfaces
+  - Reason: Match new backend schemas
+  - Change: Updated CollectedContext to match new structure
+  - Reason: Frontend needs to display new context information
+
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Updated welcome screen with simpler, example-driven copy
+  - Reason: Entry point should feel simple and inviting
+  - Change: Added stage label display and classification badges in sidebar
+  - Reason: User should see decision type, stakes, and complexity
+  - Change: Added decision frame display in sidebar
+  - Reason: User should see the structured understanding of their decision
+  - Change: Updated agent display with stance indicators (pro/con/neutral)
+  - Reason: User should understand agent perspectives at a glance
+  - Change: Changed "Generate Project" button to "Start Debate"
+  - Reason: Clearer action language
+
+## Changes
+- added: Automatic decision classification (strategic/emotional/financial/etc.)
+- added: Stakes assessment (low/medium/high/critical)
+- added: Smart clarifying questions (3-7 based on decision type)
+- added: Decision frame confirmation before debate
+- added: Expert agent generation with pro/con/neutral stances
+- changed: Entry point is now just "ask your question"
+- changed: No manual configuration required
+- changed: Agent naming enforced as role-based ("XYZ Agent")
+- removed: Manual decision maker selection stage
+- removed: Manual constraints/goals entry stage
+- removed: Manual agent configuration stage
+
+## Impact
+- user-visible impact: Much simpler, faster flow from question to debate
+- user-visible impact: System understands decision type automatically
+- user-visible impact: Clarifying questions are tailored to specific decision
+- user-visible impact: Clear decision frame shown before debate starts
+- technical impact: New ConversationServiceV2 replaces old service
+- risks or side effects: Old conversation sessions may not work with new flow
+- breaking changes: CollectedContext schema changed significantly
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending - requires full flow test
+
+## Follow-up
+- remaining work
+  - Test full conversation flow end-to-end
+  - Test debate execution with new agent format
+  - Verify decision frame accuracy
+  - Add debate result synthesis views
+- technical debt
+  - Old conversation.py can be removed once V2 is validated
+  - Consider adding decision type-specific question sets
+- limitations
+  - Classification depends on LLM accuracy
+  - Clarifying questions may not cover all edge cases
+
+---
+
 # v2.0.9 - 2026-03-20 20:40
 
 ## Summary

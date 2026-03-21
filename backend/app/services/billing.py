@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 import stripe
@@ -9,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models import BillingLedgerEntry, MonthlyUsageSummary, Subscription, UsageBalance, UsageEvent
 from app.schemas import CheckoutSessionResponse, PlanResponse, UsageEventResponse, UsageOverviewResponse
+
+logger = logging.getLogger(__name__)
 
 
 class BillingService:
@@ -27,7 +30,17 @@ class BillingService:
         if subscription.status in {"canceled", "incomplete_expired", "unpaid"}:
             raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Subscription is not active.")
 
+        # Log usage for debugging
+        logger.info(
+            f"Usage check - Tokens: {usage_balance.used_tokens}/{usage_balance.included_tokens}, "
+            f"Cost: ${usage_balance.used_cost_cents/100:.2f}/${usage_balance.included_cost_cents/100:.2f}"
+        )
+
         if usage_balance.used_tokens >= usage_balance.included_tokens or usage_balance.used_cost_cents >= usage_balance.included_cost_cents:
+            logger.warning(
+                f"Usage limit exceeded - Tokens: {usage_balance.used_tokens}/{usage_balance.included_tokens}, "
+                f"Cost: ${usage_balance.used_cost_cents/100:.2f}/${usage_balance.included_cost_cents/100:.2f}"
+            )
             raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Usage limit reached for the current billing period.")
 
         return subscription, usage_balance

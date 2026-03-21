@@ -7,7 +7,7 @@ import {
 import type {
   CollectedContext,
   ConversationMessage,
-  ConversationResponse,
+  DecisionFrame,
   ProjectResponse,
 } from './conversationTypes';
 
@@ -15,6 +15,28 @@ interface ChatInterfaceProps {
   token: string;
   onProjectGenerated: (project: ProjectResponse) => void;
 }
+
+const getStageLabel = (stage: string): string => {
+  const labels: Record<string, string> = {
+    entry: 'Getting Started',
+    classification: 'Analyzing',
+    clarification: 'Understanding Your Decision',
+    frame: 'Confirming Decision Frame',
+    agents: 'Setting Up Experts',
+    ready: 'Ready to Debate',
+  };
+  return labels[stage] || stage;
+};
+
+const getStakesBadgeColor = (stakes: string): string => {
+  const colors: Record<string, string> = {
+    low: 'bg-green-600',
+    medium: 'bg-yellow-600',
+    high: 'bg-orange-600',
+    critical: 'bg-red-600',
+  };
+  return colors[stakes] || 'bg-slate-600';
+};
 
 export default function ChatInterface({ token, onProjectGenerated }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -127,13 +149,20 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
       <div className="flex-1 flex flex-col">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 && (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-slate-100 mb-4">
-                Let's build your debate project
+            <div className="text-center py-12 max-w-xl mx-auto">
+              <h2 className="text-3xl font-bold text-slate-100 mb-4">
+                What decision are you facing?
               </h2>
               <p className="text-slate-400 mb-8">
-                Tell me what decision you need to make, and I'll guide you through setting up the perfect debate.
+                Just describe your decision or problem. I'll ask a few questions to understand it fully, then assemble expert perspectives to help you decide.
               </p>
+              <div className="text-left space-y-2 text-sm text-slate-500">
+                <p className="font-medium text-slate-400">Examples:</p>
+                <p>"Should I quit my job and join this startup?"</p>
+                <p>"Which pricing model should I use for my SaaS?"</p>
+                <p>"Should I move to Berlin or stay in Stockholm?"</p>
+                <p>"Is this product idea worth pursuing?"</p>
+              </div>
             </div>
           )}
 
@@ -222,76 +251,123 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
       </div>
 
       <div className="w-80 bg-slate-800 border-l border-slate-700 p-6 overflow-y-auto">
-        <h3 className="text-lg font-bold text-slate-100 mb-4">Context</h3>
+        <h3 className="text-lg font-bold text-slate-100 mb-2">Decision Analysis</h3>
+        
+        {context && (
+          <div className="text-xs text-blue-400 mb-4">
+            {getStageLabel(context.stage)}
+          </div>
+        )}
 
         {context && (
           <div className="space-y-4">
-            {context.topic && (
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Topic</div>
-                <div className="text-sm text-slate-200">{context.topic}</div>
+            {/* Classification badges */}
+            {context.classification && context.classification.decision_type && (
+              <div className="flex flex-wrap gap-1">
+                <span className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+                  {context.classification.decision_type}
+                </span>
+                {context.classification.stakes && (
+                  <span className={`px-2 py-0.5 text-xs text-white rounded ${getStakesBadgeColor(context.classification.stakes)}`}>
+                    {context.classification.stakes} stakes
+                  </span>
+                )}
+                {context.classification.complexity && (
+                  <span className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+                    {context.classification.complexity}
+                  </span>
+                )}
               </div>
             )}
 
-            {context.decision_makers && context.decision_makers.length > 0 && (
+            {/* Original question */}
+            {context.raw_question && (
               <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Decision Makers</div>
-                <div className="text-sm text-slate-200">
-                  {context.decision_makers.map((dm, idx) => (
-                    <div key={idx}>• {dm}</div>
-                  ))}
+                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Your Question</div>
+                <div className="text-sm text-slate-200 italic">"{context.raw_question}"</div>
+              </div>
+            )}
+
+            {/* Decision Frame */}
+            {context.decision_frame && context.decision_frame.decision_statement && (
+              <div className="bg-slate-700/50 rounded-lg p-3 space-y-2">
+                <div className="text-xs font-semibold text-blue-400 uppercase">Decision Frame</div>
+                
+                <div>
+                  <div className="text-xs text-slate-400">Decision</div>
+                  <div className="text-sm text-slate-200">{context.decision_frame.decision_statement}</div>
                 </div>
-              </div>
-            )}
-
-            {context.constraints && Object.keys(context.constraints).length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Constraints</div>
-                <div className="text-sm text-slate-200">
-                  {Object.entries(context.constraints).map(([key, value]) => (
-                    <div key={key}>
-                      <span className="text-slate-400">{key}:</span> {value}
+                
+                {context.decision_frame.alternatives && context.decision_frame.alternatives.length > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-400">Alternatives</div>
+                    <div className="text-sm text-slate-200">
+                      {context.decision_frame.alternatives.map((alt, idx) => (
+                        <div key={idx}>• {alt}</div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+                
+                {context.decision_frame.primary_objective && (
+                  <div>
+                    <div className="text-xs text-slate-400">Objective</div>
+                    <div className="text-sm text-slate-200">{context.decision_frame.primary_objective}</div>
+                  </div>
+                )}
+                
+                {context.decision_frame.constraints && context.decision_frame.constraints.length > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-400">Constraints</div>
+                    <div className="text-sm text-slate-200">
+                      {context.decision_frame.constraints.map((c, idx) => (
+                        <div key={idx}>• {c}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {context.decision_frame.evaluation_criteria && context.decision_frame.evaluation_criteria.length > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-400">Evaluation Criteria</div>
+                    <div className="text-sm text-slate-200">
+                      {context.decision_frame.evaluation_criteria.map((c, idx) => (
+                        <div key={idx}>• {c}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {context.goals && context.goals.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Goals</div>
-                <div className="text-sm text-slate-200">
-                  {context.goals.map((goal, idx) => (
-                    <div key={idx}>• {goal}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            {/* Agents */}
             {context.agents && context.agents.length > 0 && (
               <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">
-                  Agents ({context.agents.length})
+                <div className="text-xs font-semibold text-slate-400 uppercase mb-2">
+                  Expert Panel ({context.agents.length})
                 </div>
-                <div className="text-sm text-slate-200 space-y-1">
+                <div className="space-y-2">
                   {context.agents.map((agent, idx) => (
-                    <div key={idx} className="text-xs">
-                      • {agent.name}
+                    <div key={idx} className="bg-slate-700/50 rounded p-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          agent.stance === 'pro' ? 'bg-green-500' :
+                          agent.stance === 'con' ? 'bg-red-500' : 'bg-slate-400'
+                        }`} />
+                        <span className="text-sm font-medium text-slate-200">{agent.name}</span>
+                      </div>
+                      {agent.role && (
+                        <div className="text-xs text-slate-400 mt-1 ml-4">{agent.role}</div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {context.flow && context.flow.rounds && (
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Flow</div>
-                <div className="text-sm text-slate-200">{context.flow.rounds} rounds</div>
-              </div>
-            )}
-
+            {/* Progress */}
             <div className="pt-4 border-t border-slate-700">
-              <div className="text-xs font-semibold text-slate-400 uppercase mb-2">Completeness</div>
+              <div className="text-xs font-semibold text-slate-400 uppercase mb-2">Progress</div>
               <div className="w-full bg-slate-700 rounded-full h-2">
                 <div
                   className="bg-blue-500 h-2 rounded-full transition-all duration-300"
@@ -301,13 +377,14 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
               <div className="text-xs text-slate-400 mt-1">{context.completeness}%</div>
             </div>
 
+            {/* Generate button */}
             {canGenerate && (
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-medium transition-colors"
+                className="w-full mt-4 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-medium transition-colors"
               >
-                {generating ? 'Generating...' : 'Generate Project'}
+                {generating ? 'Starting Debate...' : '🚀 Start Debate'}
               </button>
             )}
           </div>
@@ -315,7 +392,7 @@ export default function ChatInterface({ token, onProjectGenerated }: ChatInterfa
 
         {!context && (
           <p className="text-sm text-slate-400">
-            Start a conversation to see the collected context here.
+            Ask your question to get started.
           </p>
         )}
       </div>

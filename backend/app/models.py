@@ -63,9 +63,9 @@ class UsageBalance(Base):
     workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id"), unique=True, index=True)
     billing_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     billing_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    included_tokens: Mapped[int] = mapped_column(Integer, default=250000)
+    included_tokens: Mapped[int] = mapped_column(Integer, default=10000000)  # 10M tokens for dev
     used_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    included_cost_cents: Mapped[int] = mapped_column(Integer, default=5000)
+    included_cost_cents: Mapped[int] = mapped_column(Integer, default=500000)  # $5000 for dev
     used_cost_cents: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 

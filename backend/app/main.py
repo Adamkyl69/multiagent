@@ -34,7 +34,7 @@ from app.schemas_conversation import (
     StartConversationRequest,
 )
 from app.services.billing import BillingService
-from app.services.conversation import ConversationService
+from app.services.conversation_v2 import ConversationServiceV2
 from app.services.identity import IdentityService
 from app.services.intake import IntakeService
 from app.services.llm import LLMService
@@ -47,7 +47,7 @@ identity_service = IdentityService()
 intake_service = IntakeService()
 llm_service = LLMService()
 project_service = ProjectService(intake_service=intake_service, billing_service=billing_service, llm_service=llm_service)
-conversation_service = ConversationService(llm_service=llm_service, project_service=project_service)
+conversation_service = ConversationServiceV2(llm_service=llm_service, project_service=project_service)
 run_broker = RunEventBroker()
 run_service = RunService(session_factory=async_session_factory, billing_service=billing_service, broker=run_broker, llm_service=llm_service)
 
@@ -271,6 +271,7 @@ async def start_conversation(
         workspace_id=context["workspace"].id,
         user_id=context["user"].id,
         initial_message=payload.initial_message,
+        additional_context=payload.context,
     )
 
 

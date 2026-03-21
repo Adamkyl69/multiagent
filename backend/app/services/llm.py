@@ -178,13 +178,30 @@ class LLMService:
         
         # Handle multiple response formats from LLM
         content = ""
+        
+        # Try various possible response structures
         if "content" in response:
             content = str(response.get("content") or "").strip()
         elif "message" in response and isinstance(response["message"], dict):
             content = str(response["message"].get("content") or "").strip()
+        elif "text" in response:
+            content = str(response.get("text") or "").strip()
+        elif "response" in response:
+            content = str(response.get("response") or "").strip()
+        elif "output" in response:
+            content = str(response.get("output") or "").strip()
+        
+        # If still empty, try to extract from any string value in the response
+        if not content:
+            for key, value in response.items():
+                if isinstance(value, str) and len(value.strip()) > 10 and key not in {"message_type", "type", "role"}:
+                    content = value.strip()
+                    logger.warning(f"Extracted content from unexpected field '{key}': {content[:100]}...")
+                    break
         
         if not content:
             logger.error(f"LLM returned empty debate turn content. Full response: {response}")
+            logger.error(f"Response keys: {list(response.keys())}")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="LLM returned an empty debate turn.")
         return DebateTurnResult(content=content, message_type=message_type, usage=self._usage_from_response(model, self._last_response, provider))
 
