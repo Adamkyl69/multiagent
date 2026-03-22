@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Mic, MicOff, ArrowUp } from 'lucide-react';
 import {
   generateProjectFromConversation,
   getConversation,
@@ -50,15 +51,109 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resuming, setResuming] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isTypingAnimation, setIsTypingAnimation] = useState(true);
+  const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Initialize speech recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInput((prev) => prev + (prev ? ' ' : '') + transcript);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  const toggleSpeechRecognition = () => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error('Failed to start speech recognition:', error);
+      }
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Typing animation for example questions in input field
+  useEffect(() => {
+    if (messages.length > 0 || !isTypingAnimation) return;
+
+    const examples = [
+      'Should I quit my job and join this startup?',
+      'Which pricing model should I use for my SaaS?',
+      'Should I move to Berlin or stay in Stockholm?',
+      'Is this product idea worth pursuing?',
+    ];
+
+    const currentExample = examples[currentExampleIndex];
+    let charIndex = 0;
+
+    const typeNextChar = () => {
+      if (charIndex < currentExample.length) {
+        setInput(currentExample.substring(0, charIndex + 1));
+        charIndex++;
+        typingTimeoutRef.current = setTimeout(typeNextChar, 50);
+      } else {
+        typingTimeoutRef.current = setTimeout(() => {
+          setCurrentExampleIndex((prev) => (prev + 1) % examples.length);
+          setInput('');
+        }, 2000);
+      }
+    };
+
+    typingTimeoutRef.current = setTimeout(typeNextChar, 500);
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [currentExampleIndex, messages.length, isTypingAnimation]);
 
   // Resume an existing session on mount if resumeSessionId is provided
   useEffect(() => {
@@ -157,7 +252,7 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (sessionId) {
@@ -183,265 +278,400 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'transparent', overflow: 'hidden' }}>
-      {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {messages.length === 0 && (
-            <div style={{ textAlign: 'center', paddingTop: 80, paddingBottom: 40, maxWidth: 580, margin: '0 auto' }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'rgba(99,102,241,0.1)',
-                border: '1px solid rgba(99,102,241,0.2)',
-                borderRadius: 24,
-                padding: '8px 18px',
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-                color: '#818CF8',
-                marginBottom: 28,
-              }}>
-                <span style={{ fontSize: 16 }}>✦</span>
-                DECISION INTELLIGENCE
-              </div>
-              <h1 style={{ 
-                fontSize: 48, 
-                fontWeight: 700, 
-                color: '#F1F5F9', 
-                margin: '0 0 20px', 
-                lineHeight: 1.2,
-                fontFamily: 'Space Grotesk, system-ui, sans-serif',
-              }}>
-                What decision are you facing?
-              </h1>
-              <p style={{ 
-                fontSize: 15.5, 
-                color: '#64748B', 
-                margin: '0 0 48px', 
-                lineHeight: 1.7,
-                fontFamily: 'DM Sans, system-ui, sans-serif',
-              }}>
-                Describe your decision or dilemma. I'll ask a few targeted questions, frame it clearly, then assemble expert perspectives to help you decide.
-              </p>
-              
-              <div style={{ textAlign: 'left', marginBottom: 24 }}>
+    <>
+      <div style={{ display: 'flex', height: '100vh', background: 'transparent', overflow: 'hidden' }}>
+        {/* Chat area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {messages.length === 0 ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Hero Section */}
+              <div style={{ textAlign: 'center', maxWidth: 580, margin: '0 auto', width: '100%', padding: '60px 24px 40px' }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: 'rgba(99,102,241,0.1)',
+                  border: '1px solid rgba(99,102,241,0.2)',
+                  borderRadius: 24,
+                  padding: '8px 18px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  color: '#818CF8',
+                  marginBottom: 28,
+                }}>
+                  <span style={{ fontSize: 16 }}>✦</span>
+                  DECISION INTELLIGENCE
+                </div>
+                <h1 style={{ 
+                  fontSize: 48, 
+                  fontWeight: 700, 
+                  color: '#F1F5F9', 
+                  margin: '0 0 20px', 
+                  lineHeight: 1.2,
+                  fontFamily: 'Space Grotesk, system-ui, sans-serif',
+                }}>
+                  Let's help you decide
+                </h1>
                 <p style={{ 
-                  fontSize: 11, 
-                  fontWeight: 600, 
-                  letterSpacing: '0.08em', 
-                  color: '#475569', 
-                  marginBottom: 16,
-                  textTransform: 'uppercase',
-                }}>Quick Start Examples</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {[
-                    { num: '1', text: 'Should I quit my job and join this startup?' },
-                    { num: '2', text: 'Which pricing model should I use for my SaaS?' },
-                    { num: '3', text: 'Should I move to Berlin or stay in Stockholm?' },
-                    { num: '4', text: 'Is this product idea worth pursuing?' },
-                  ].map((ex) => (
-                    <div
-                      key={ex.num}
-                      onClick={() => setInput(ex.text)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 14,
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                        borderRadius: 10,
-                        padding: '14px 16px',
-                        cursor: 'pointer',
-                        transition: 'all 180ms',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                        e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                      }}
-                    >
-                      <span style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        background: 'rgba(99,102,241,0.15)',
-                        color: '#818CF8',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        flexShrink: 0,
-                      }}>{ex.num}</span>
-                      <span style={{ 
-                        fontSize: 14, 
-                        color: '#94A3B8',
-                        fontFamily: 'DM Sans, system-ui, sans-serif',
-                      }}>{ex.text}</span>
+                  fontSize: 15.5, 
+                  color: '#64748B', 
+                  margin: '0', 
+                  lineHeight: 1.7,
+                  fontFamily: 'DM Sans, system-ui, sans-serif',
+                }}>
+                  Describe your decision or dilemma. I'll ask a few targeted questions, frame it clearly, then assemble expert perspectives to help you decide.
+                </p>
+              </div>
+
+              {/* Input bar below hero */}
+              <div style={{ padding: '0 24px 20px' }}>
+                <div style={{ maxWidth: 720, margin: '0 auto' }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <textarea
+                        value={input}
+                        onChange={(e) => {
+                          setIsTypingAnimation(false);
+                          setInput(e.target.value);
+                        }}
+                        onKeyPress={handleKeyPress}
+                        placeholder={sessionId ? 'Type your response...' : 'What decision do you need to make?'}
+                        disabled={loading || generating}
+                        rows={1}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          borderRadius: 12,
+                          padding: '13px 18px',
+                          paddingRight: speechSupported ? '80px' : '50px',
+                          fontSize: 14.5,
+                          color: '#F1F5F9',
+                          outline: 'none',
+                          fontFamily: 'DM Sans, system-ui, sans-serif',
+                          resize: 'none',
+                          minHeight: '46px',
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          lineHeight: '1.5',
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
+                        }}
+                        onFocus={e => {
+                          e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                        }}
+                        onBlur={e => {
+                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                        }}
+                        onInput={(e) => {
+                          const target = e.target as HTMLTextAreaElement;
+                          target.style.height = 'auto';
+                          target.style.height = Math.min(target.scrollHeight, 150) + 'px';
+                        }}
+                      />
+                      <button
+                        onClick={sessionId ? handleSend : () => handleStart(input)}
+                        disabled={!input.trim() || loading || generating}
+                        style={{
+                          position: 'absolute',
+                          right: speechSupported ? '44px' : '12px',
+                          bottom: '13px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '28px',
+                          height: '28px',
+                          background: !input.trim() || loading || generating ? 'transparent' : '#6366F1',
+                          border: 'none',
+                          borderRadius: '50%',
+                          color: !input.trim() || loading || generating ? '#475569' : '#fff',
+                          cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
+                          transition: 'all 180ms',
+                          padding: 0,
+                        }}
+                        onMouseEnter={e => {
+                          if (input.trim() && !loading && !generating) {
+                            e.currentTarget.style.background = '#818CF8';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (input.trim() && !loading && !generating) {
+                            e.currentTarget.style.background = '#6366F1';
+                          }
+                        }}
+                        title="Send message"
+                      >
+                        <ArrowUp size={18} />
+                      </button>
+                      {speechSupported && (
+                        <button
+                          onClick={toggleSpeechRecognition}
+                          disabled={loading || generating}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            bottom: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '28px',
+                            height: '28px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: '50%',
+                            color: isListening ? '#EF4444' : '#64748B',
+                            cursor: loading || generating ? 'not-allowed' : 'pointer',
+                            transition: 'all 180ms',
+                            padding: 0,
+                          }}
+                          onMouseEnter={e => {
+                            if (!loading && !generating) {
+                              e.currentTarget.style.color = isListening ? '#DC2626' : '#94A3B8';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if (!loading && !generating) {
+                              e.currentTarget.style.color = isListening ? '#EF4444' : '#64748B';
+                              e.currentTarget.style.background = 'transparent';
+                            }
+                          }}
+                          title={isListening ? 'Stop recording' : 'Start voice input'}
+                        >
+                          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                        </button>
+                      )}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </div>
-          )}
+          ) : (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              overflowX: 'hidden',
+              padding: '40px 24px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 20,
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
+            }}>
+            {messages.map((msg) => (
+              <div key={msg.id} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: 720, margin: messages.length > 0 ? '0 auto' : '0', width: '100%' }}>
+                <div style={{
+                  maxWidth: 600,
+                  borderRadius: 14,
+                  padding: '14px 18px',
+                  background: msg.role === 'user' ? 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)' : 'rgba(255,255,255,0.03)',
+                  border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                  color: '#F1F5F9',
+                  boxShadow: msg.role === 'user' ? '0 4px 12px rgba(99,102,241,0.2)' : 'none',
+                }}>
+                  <p style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 14.5, lineHeight: 1.65, fontFamily: 'DM Sans, system-ui, sans-serif' }}>{msg.content}</p>
 
-          {messages.map((msg) => (
-            <div key={msg.id} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: 720, margin: messages.length > 0 ? '0 auto' : '0', width: '100%' }}>
-              <div style={{
-                maxWidth: 600,
-                borderRadius: 14,
-                padding: '14px 18px',
-                background: msg.role === 'user' ? 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)' : 'rgba(255,255,255,0.03)',
-                border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                color: '#F1F5F9',
-                boxShadow: msg.role === 'user' ? '0 4px 12px rgba(99,102,241,0.2)' : 'none',
-              }}>
-                <p style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 14.5, lineHeight: 1.65, fontFamily: 'DM Sans, system-ui, sans-serif' }}>{msg.content}</p>
+                  {msg.role === 'system' && msg.metadata?.quick_replies && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+                      {msg.metadata.quick_replies.map((reply) => (
+                        <button
+                          key={reply}
+                          onClick={() => handleQuickReply(reply)}
+                          disabled={loading}
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            background: 'rgba(99,102,241,0.12)',
+                            border: '1px solid rgba(99,102,241,0.25)',
+                            borderRadius: 24,
+                            color: '#A5B4FC',
+                            cursor: 'pointer',
+                            transition: 'all 180ms',
+                            fontFamily: 'DM Sans, system-ui, sans-serif',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(99,102,241,0.2)';
+                            e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(99,102,241,0.12)';
+                            e.currentTarget.style.borderColor = 'rgba(99,102,241,0.25)';
+                          }}
+                        >
+                          {reply}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                {msg.role === 'system' && msg.metadata?.quick_replies && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-                    {msg.metadata.quick_replies.map((reply) => (
-                      <button
-                        key={reply}
-                        onClick={() => handleQuickReply(reply)}
-                        disabled={loading}
-                        style={{
-                          padding: '7px 14px',
-                          fontSize: 13,
-                          fontWeight: 500,
-                          background: 'rgba(99,102,241,0.12)',
-                          border: '1px solid rgba(99,102,241,0.25)',
-                          borderRadius: 24,
-                          color: '#A5B4FC',
-                          cursor: 'pointer',
-                          transition: 'all 180ms',
-                          fontFamily: 'DM Sans, system-ui, sans-serif',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = 'rgba(99,102,241,0.2)';
-                          e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'rgba(99,102,241,0.12)';
-                          e.currentTarget.style.borderColor = 'rgba(99,102,241,0.25)';
-                        }}
-                      >
-                        {reply}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  {msg.role === 'system' && msg.metadata?.suggestions?.agents && (
+                    <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {msg.metadata.suggestions.agents.map((agent, idx) => (
+                        <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', fontSize: 13 }}>
+                          <div style={{ fontWeight: 600, color: '#F1F5F9', fontFamily: 'DM Sans, system-ui, sans-serif' }}>{agent.name}</div>
+                          <div style={{ color: '#94A3B8', marginTop: 3, fontSize: 13 }}>{agent.role}</div>
+                          <div style={{ color: '#64748B', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>{agent.reason}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
 
-                {msg.role === 'system' && msg.metadata?.suggestions?.agents && (
-                  <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {msg.metadata.suggestions.agents.map((agent, idx) => (
-                      <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', fontSize: 13 }}>
-                        <div style={{ fontWeight: 600, color: '#F1F5F9', fontFamily: 'DM Sans, system-ui, sans-serif' }}>{agent.name}</div>
-                        <div style={{ color: '#94A3B8', marginTop: 3, fontSize: 13 }}>{agent.role}</div>
-                        <div style={{ color: '#64748B', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>{agent.reason}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '14px 18px', display: 'flex', gap: 7, alignItems: 'center' }}>
+                  {[0, 150, 300].map((delay) => (
+                    <span key={delay} style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366F1', opacity: 0.7, animation: `pulse 1.2s ${delay}ms infinite` }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div style={{ background: 'rgba(224,82,82,0.08)', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 10, padding: '12px 18px', fontSize: 13.5, color: '#FCA5A5', maxWidth: 720, margin: '0 auto', width: '100%' }}>
+                {error}
+              </div>
+            )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input bar at bottom for active chat */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 24px', background: 'rgba(11,14,26,0.8)', backdropFilter: 'blur(12px)' }}>
+              <div style={{ display: 'flex', gap: 12, maxWidth: 720, margin: '0 auto', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <textarea
+                    value={input}
+                    onChange={(e) => {
+                      setIsTypingAnimation(false);
+                      setInput(e.target.value);
+                    }}
+                    onKeyPress={handleKeyPress}
+                    placeholder={sessionId ? 'Type your response...' : 'What decision do you need to make?'}
+                    disabled={loading || generating}
+                    rows={1}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 12,
+                      padding: '13px 18px',
+                      paddingRight: speechSupported ? '80px' : '50px',
+                      fontSize: 14.5,
+                      color: '#F1F5F9',
+                      outline: 'none',
+                      fontFamily: 'DM Sans, system-ui, sans-serif',
+                      resize: 'none',
+                      minHeight: '46px',
+                      maxHeight: '150px',
+                      overflowY: 'auto',
+                      lineHeight: '1.5',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
+                    }}
+                    onFocus={e => {
+                      e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                    }}
+                    onBlur={e => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                    }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = Math.min(target.scrollHeight, 150) + 'px';
+                    }}
+                  />
+                  <button
+                    onClick={sessionId ? handleSend : () => handleStart(input)}
+                    disabled={!input.trim() || loading || generating}
+                    style={{
+                      position: 'absolute',
+                      right: speechSupported ? '44px' : '12px',
+                      bottom: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '28px',
+                      height: '28px',
+                      background: !input.trim() || loading || generating ? 'transparent' : '#6366F1',
+                      border: 'none',
+                      borderRadius: '50%',
+                      color: !input.trim() || loading || generating ? '#475569' : '#fff',
+                      cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
+                      transition: 'all 180ms',
+                      padding: 0,
+                    }}
+                    onMouseEnter={e => {
+                      if (input.trim() && !loading && !generating) {
+                        e.currentTarget.style.background = '#818CF8';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (input.trim() && !loading && !generating) {
+                        e.currentTarget.style.background = '#6366F1';
+                      }
+                    }}
+                    title="Send message"
+                  >
+                    <ArrowUp size={18} />
+                  </button>
+                  {speechSupported && (
+                    <button
+                      onClick={toggleSpeechRecognition}
+                      disabled={loading || generating}
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        bottom: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '28px',
+                        height: '28px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '50%',
+                        color: isListening ? '#EF4444' : '#64748B',
+                        cursor: loading || generating ? 'not-allowed' : 'pointer',
+                        transition: 'all 180ms',
+                        padding: 0,
+                      }}
+                      onMouseEnter={e => {
+                        if (!loading && !generating) {
+                          e.currentTarget.style.color = isListening ? '#DC2626' : '#94A3B8';
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!loading && !generating) {
+                          e.currentTarget.style.color = isListening ? '#EF4444' : '#64748B';
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                      title={isListening ? 'Stop recording' : 'Start voice input'}
+                    >
+                      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          ))}
-
-          {loading && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '14px 18px', display: 'flex', gap: 7, alignItems: 'center' }}>
-                {[0, 150, 300].map((delay) => (
-                  <span key={delay} style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366F1', opacity: 0.7, animation: `pulse 1.2s ${delay}ms infinite` }} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ background: 'rgba(224,82,82,0.08)', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 10, padding: '12px 18px', fontSize: 13.5, color: '#FCA5A5', maxWidth: 720, margin: '0 auto', width: '100%' }}>
-              {error}
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input bar */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 24px', background: 'rgba(11,14,26,0.8)', backdropFilter: 'blur(12px)' }}>
-          <div style={{ display: 'flex', gap: 12, maxWidth: 720, margin: '0 auto' }}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={sessionId ? 'Type your response...' : 'What decision do you need to make?'}
-              disabled={loading || generating}
-              style={{
-                flex: 1,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 12,
-                padding: '13px 18px',
-                fontSize: 14.5,
-                color: '#F1F5F9',
-                outline: 'none',
-                fontFamily: 'DM Sans, system-ui, sans-serif',
-              }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
-                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-              }}
-            />
-            <button
-              onClick={sessionId ? handleSend : () => handleStart(input)}
-              disabled={!input.trim() || loading || generating}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '13px 26px',
-                background: !input.trim() || loading || generating ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)',
-                border: 'none',
-                borderRadius: 12,
-                color: !input.trim() || loading || generating ? '#475569' : '#fff',
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
-                transition: 'all 180ms',
-                fontFamily: 'DM Sans, system-ui, sans-serif',
-                boxShadow: input.trim() && !loading && !generating ? '0 4px 12px rgba(99,102,241,0.25)' : 'none',
-              }}
-              onMouseEnter={e => { 
-                if (input.trim() && !loading && !generating) {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(99,102,241,0.35)';
-                }
-              }}
-              onMouseLeave={e => { 
-                if (input.trim() && !loading && !generating) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.25)';
-                }
-              }}
-            >
-              <span>Send</span>
-              <span style={{ fontSize: 16 }}>→</span>
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Right context panel */}
-      <div style={{ width: 300, background: 'rgba(11,14,26,0.6)', borderLeft: '1px solid rgba(255,255,255,0.06)', padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, backdropFilter: 'blur(12px)' }}>
+      {/* Right context panel - only show when conversation has started */}
+      {messages.length > 0 && (
+        <div style={{ width: 300, background: 'rgba(11,14,26,0.6)', borderLeft: '1px solid rgba(255,255,255,0.06)', padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, backdropFilter: 'blur(12px)' }}>
         <div>
           <h3 style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: '#64748B', margin: '0 0 6px', textTransform: 'uppercase', fontFamily: 'DM Sans, system-ui, sans-serif' }}>Decision Analysis</h3>
           {context && (
@@ -580,7 +810,15 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
             )}
           </>
         )}
+        </div>
+      )}
       </div>
-    </div>
+      <style>{`
+        @keyframes blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0; }
+        }
+      `}</style>
+    </>
   );
 }

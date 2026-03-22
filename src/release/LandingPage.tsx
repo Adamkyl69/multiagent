@@ -305,13 +305,13 @@ export default function LandingPage({ onSignIn, onGetStarted }: LandingPageProps
                       <svg width="20" height="20" viewBox="0 0 100 100" fill="none"><path d="M57.2 14.5L82.5 80h-16L60 60H40L33.5 80h-16L43 14.5h14.2zM50 28l-7.5 22h15L50 28z" fill="#D97659"/></svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Analyst</div>
-                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9', marginTop: 1 }}>Claude 3.5</div>
+                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Agent Alpha</div>
+                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9', marginTop: 1 }}>Claude 3.5 Sonnet</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B' }}>
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22D3EE', boxShadow: '0 0 6px #22D3EE', animation: 'blink 1.8s infinite' }} />
-                    <span>Ready</span>
+                    <span>Analytical · Ready</span>
                   </div>
                 </div>
 
@@ -336,13 +336,13 @@ export default function LandingPage({ onSignIn, onGetStarted }: LandingPageProps
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#4285F4"><path d="M12 2C12 2 11.5 7.5 9 10S2 12 2 12s5.5.5 7 3 1 7 1 7 .5-5.5 3-7 7-1 7-1-5.5-.5-7-3-1-9-1-9z"/></svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Strategist</div>
-                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9', marginTop: 1 }}>Gemini 1.5</div>
+                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Agent Beta</div>
+                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9', marginTop: 1 }}>Gemini 1.5 Pro</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B' }}>
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22D3EE', boxShadow: '0 0 6px #22D3EE', animation: 'blink 1.8s infinite' }} />
-                    <span>Ready</span>
+                    <span>Research · Ready</span>
                   </div>
                 </div>
               </div>
@@ -419,13 +419,13 @@ export default function LandingPage({ onSignIn, onGetStarted }: LandingPageProps
                       <svg width="22" height="22" viewBox="0 0 41 41" fill="#10A37F"><path d="M37.5 16.7a10.4 10.4 0 00-.9-8.5 10.6 10.6 0 00-11.3-5.1A10.4 10.4 0 0017.6 0a10.5 10.5 0 00-10 7.3 10.5 10.5 0 00-7 5.1 10.6 10.6 0 001.3 12.4 10.4 10.4 0 00.9 8.5 10.6 10.6 0 0011.3 5.1 10.4 10.4 0 007.7 3.1 10.5 10.5 0 0010-7.3 10.5 10.5 0 007-5.1 10.6 10.6 0 00-1.3-12.4zM22.6 38.2a7.8 7.8 0 01-5-1.8l.2-.1 8.4-4.8a1.4 1.4 0 00.7-1.2V19l3.5 2a.1.1 0 010 .1v9.7a7.8 7.8 0 01-7.8 7.4zM6 31.5a7.7 7.7 0 01-.9-5.2l.2.1 8.3 4.8a1.4 1.4 0 001.4 0L25 25.6v4a.1.1 0 010 .1L16.4 34a7.8 7.8 0 01-10.4-2.5zm-1.7-17a7.7 7.7 0 014.1-3.4v9.8a1.4 1.4 0 00.7 1.2l9.9 5.7-3.5 2a.1.1 0 01-.1 0L6.8 23a7.8 7.8 0 01-2.5-8.5zm28.8 6.7l-9.9-5.7 3.5-2a.1.1 0 01.1 0l8.6 5a7.8 7.8 0 01-1.2 14l-.1-.1V21.5a1.4 1.4 0 00-.7-1.3h-.3zM34.7 18l-.2-.1-8.3-4.8a1.4 1.4 0 00-1.4 0L15 18.7v-4a.1.1 0 010-.1L23.6 10a7.8 7.8 0 0111.1 8.1v-.1zM13.5 22.7L10 20.7a.1.1 0 010-.1v-9.7a7.8 7.8 0 0112.8-6l-.2.1-8.3 4.8a1.4 1.4 0 00-.7 1.2l-.1 11.7zm1.9-4.1l4.4-2.6 4.5 2.6v5l-4.4 2.6-4.5-2.6V18.6z"/></svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Critic</div>
+                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Agent Gamma</div>
                       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9', marginTop: 1 }}>GPT-4o</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B' }}>
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22D3EE', boxShadow: '0 0 6px #22D3EE', animation: 'blink 1.8s infinite' }} />
-                    <span>Ready</span>
+                    <span>Synthesis · Ready</span>
                   </div>
                 </div>
 
@@ -450,13 +450,13 @@ export default function LandingPage({ onSignIn, onGetStarted }: LandingPageProps
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#9B8AFF"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Facilitator</div>
+                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Agent Delta</div>
                       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9', marginTop: 1 }}>Grok Beta</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B' }}>
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22D3EE', boxShadow: '0 0 6px #22D3EE', animation: 'blink 1.8s infinite' }} />
-                    <span>Ready</span>
+                    <span>Contrarian · Ready</span>
                   </div>
                 </div>
               </div>

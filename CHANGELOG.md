@@ -1,3 +1,530 @@
+# v3.7.4 - 2026-03-22 14:04
+
+## Summary
+Updated agent cards in the landing page to match the correct naming and role specifications. Changed agent labels to Agent Alpha/Beta/Gamma/Delta format and updated model names and roles to accurately reflect their functions: Claude 3.5 Sonnet (Analytical), Gemini 1.5 Pro (Research), GPT-4o (Synthesis), and Grok Beta (Contrarian).
+
+## Files Modified
+- `src/release/LandingPage.tsx` — modified
+  - Change: Updated Claude agent label from "Analyst" to "Agent Alpha"
+  - Reason: Match standardized agent naming convention
+  - Change: Updated Claude model name from "Claude 3.5" to "Claude 3.5 Sonnet"
+  - Reason: Use full model name for clarity
+  - Change: Updated Claude role from "Ready" to "Analytical · Ready"
+  - Reason: Display agent's analytical function
+  - Change: Updated Gemini agent label from "Strategist" to "Agent Beta"
+  - Reason: Match standardized agent naming convention
+  - Change: Updated Gemini model name from "Gemini 1.5" to "Gemini 1.5 Pro"
+  - Reason: Use full model name for accuracy
+  - Change: Updated Gemini role from "Ready" to "Research · Ready"
+  - Reason: Display agent's research function
+  - Change: Updated GPT-4 agent label from "Critic" to "Agent Gamma"
+  - Reason: Match standardized agent naming convention
+  - Change: Updated GPT-4 role from "Ready" to "Synthesis · Ready"
+  - Reason: Display agent's synthesis function
+  - Change: Updated Grok agent label from "Facilitator" to "Agent Delta"
+  - Reason: Match standardized agent naming convention
+  - Change: Updated Grok role from "Ready" to "Contrarian · Ready"
+  - Reason: Display agent's contrarian function
+
+## Changes
+- changed: Agent Alpha (Claude 3.5 Sonnet) - Analytical · Ready
+- changed: Agent Beta (Gemini 1.5 Pro) - Research · Ready
+- changed: Agent Gamma (GPT-4o) - Synthesis · Ready
+- changed: Agent Delta (Grok Beta) - Contrarian · Ready
+- improved: Consistent agent naming with Alpha/Beta/Gamma/Delta labels
+- improved: Full model names for better clarity
+- improved: Role descriptions showing each agent's specific function
+
+## Impact
+- user-visible impact: Agent cards now show standardized labels and full model names
+- user-visible impact: Each agent displays its specific role (Analytical, Research, Synthesis, Contrarian)
+- user-visible impact: More accurate representation of agent capabilities
+- technical impact: Updated text content in agent card components
+- risks or side effects: None - purely text content updates
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — verify agent cards display correctly on landing page
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
+
+---
+
+# v3.7.3 - 2026-03-22 14:01
+
+## Summary
+Hidden the Decision Analysis right panel until the conversation actually starts. The panel now only appears after the user sends their first message, providing a cleaner initial view focused on the hero section and input field.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Added conditional rendering to right context panel based on messages.length
+  - Reason: Hide panel until conversation starts for cleaner initial UI
+  - Change: Wrapped entire right panel div in {messages.length > 0 && (...)}
+  - Reason: Panel only renders when at least one message exists
+  - Change: Panel appears immediately after first message is sent
+  - Reason: Show decision analysis context as soon as conversation begins
+  - Change: No changes to panel content or functionality
+  - Reason: Only visibility timing changed, not the panel itself
+
+## Changes
+- changed: Right context panel (Decision Analysis) now hidden on initial load
+- added: Conditional rendering based on message count
+- improved: Cleaner initial view with more focus on hero and input
+- improved: Better use of horizontal space when panel is hidden
+- improved: Panel appears automatically when conversation starts
+
+## Impact
+- user-visible impact: Decision Analysis panel hidden until first message sent
+- user-visible impact: More spacious initial view without right panel
+- user-visible impact: Panel appears automatically when conversation begins
+- technical impact: Conditional rendering based on messages.length > 0
+- risks or side effects: None - panel functionality unchanged
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test panel visibility before/after first message
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
+
+---
+
+# v3.7.2 - 2026-03-22 13:56
+
+## Summary
+Improved ChatInterface layout by moving the input box directly below the hero section (instead of at the bottom of the page), ensuring scrollbar only appears when chat messages overflow, and updating the hero title to "Let's help you decide" for a more welcoming tone.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Updated hero title from "What decision are you facing?" to "Let's help you decide"
+  - Reason: More welcoming and positive tone for initial user experience
+  - Change: Moved input box from bottom of page to directly below hero section (when no messages)
+  - Reason: Better visual hierarchy and proximity to hero content
+  - Change: Wrapped chat messages area in scrollable container with overflow: hidden on parent
+  - Reason: Scrollbar only appears when messages exceed viewport height
+  - Change: Input box positioned below hero section in initial view
+  - Reason: Natural flow from hero content to input field
+  - Change: Input box remains at bottom when chat is active (messages exist)
+  - Reason: Standard chat interface behavior for active conversations
+  - Change: Added flex: 1 to chat messages container with overflowY: auto
+  - Reason: Messages area expands to fill space and scrolls independently
+  - Change: Removed fixed bottom positioning for initial input box
+  - Reason: Input should be part of content flow, not floating at bottom
+  - Change: Maintained separate input positioning for active chat vs initial view
+  - Reason: Different UX requirements for empty state vs active conversation
+
+## Changes
+- changed: Hero title to "Let's help you decide" (from "What decision are you facing?")
+- changed: Input box positioned below hero section in initial view
+- changed: Scrollbar only visible when chat messages overflow
+- improved: Visual hierarchy with input directly below hero content
+- improved: More welcoming and positive hero messaging
+- improved: Better use of vertical space in initial view
+- improved: Cleaner layout without unnecessary scrollbars
+
+## Impact
+- user-visible impact: Input box appears directly below hero section on initial load
+- user-visible impact: More welcoming hero title "Let's help you decide"
+- user-visible impact: Scrollbar only shows when chat messages require scrolling
+- user-visible impact: Better visual flow from hero to input field
+- technical impact: Conditional layout based on message count
+- technical impact: Separate input positioning for initial vs active chat views
+- risks or side effects: None - layout improvements only
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test input box positioning and scrollbar behavior
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
+
+---
+
+# v3.7.1 - 2026-03-22 13:53
+
+## Summary
+Fixed typing animation implementation to use the actual functional textarea input instead of a dummy chat box. The animation now types example questions directly into the input field and stops immediately when the user starts typing.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Removed dummy chat box that displayed animated examples
+  - Reason: Animation should appear in the functional input field, not a separate display
+  - Change: Changed typing animation to use setInput() instead of setTypingText()
+  - Reason: Type directly into the actual functional textarea
+  - Change: Renamed typingText state to isTypingAnimation boolean flag
+  - Reason: Only need to track whether animation is active, not the text itself
+  - Change: Added setIsTypingAnimation(false) in textarea onChange handler
+  - Reason: Stop animation immediately when user starts typing
+  - Change: Updated typing animation useEffect to check isTypingAnimation flag
+  - Reason: Prevent animation from continuing after user interaction
+  - Change: Simplified hero section layout to center vertically
+  - Reason: Better visual balance without dummy chat box
+  - Change: Removed separate chat box area from initial view
+  - Reason: Input field at bottom is the only interactive element needed
+  - Change: Animation cycles through examples in the actual input field
+  - Reason: Users see examples in the same place they'll type their question
+  - Change: Maintained 50ms typing speed and 2s pause between examples
+  - Reason: Keep natural typing rhythm and readability
+  - Change: Input field remains functional during animation
+  - Reason: User can interrupt and start typing at any time
+
+## Changes
+- changed: Typing animation now appears in functional textarea input
+- changed: Animation uses actual input value instead of separate display
+- removed: Dummy chat box with animated example bubbles
+- added: isTypingAnimation flag to control animation state
+- added: Animation stop trigger on user input (onChange)
+- improved: Hero section centered vertically for better layout
+- improved: Seamless transition from animation to user input
+- improved: More intuitive UX - examples appear where user will type
+
+## Impact
+- user-visible impact: Example questions type directly in the input field
+- user-visible impact: Animation stops immediately when user starts typing
+- user-visible impact: Cleaner layout without dummy chat elements
+- user-visible impact: Input field is always functional and ready for user input
+- technical impact: Simplified state management (removed typingText state)
+- technical impact: Animation directly manipulates input value
+- risks or side effects: None - animation cleanly stops on user interaction
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test typing animation in input field and user interruption
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
+
+---
+
+# v3.7.0 - 2026-03-22 13:47
+
+## Summary
+Restructured ChatInterface main screen to display hero section with animated typing example questions in the chat box below. After the first message is sent, the interface transitions to the normal chat view. This creates a more engaging and dynamic initial user experience.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Added typingText and currentExampleIndex state variables
+  - Reason: Track current typing animation state and which example is being shown
+  - Change: Added typingTimeoutRef to manage typing animation timeouts
+  - Reason: Proper cleanup of animation intervals on component unmount
+  - Change: Implemented typing animation useEffect with character-by-character display
+  - Reason: Create realistic typing effect for example questions
+  - Change: Configured typing speed at 50ms per character
+  - Reason: Natural reading speed for typing animation
+  - Change: Added 2-second pause between example questions
+  - Reason: Give users time to read each example before cycling to next
+  - Change: Cycling through 4 example questions in loop
+  - Reason: Continuously demonstrate different use cases
+  - Change: Restructured layout to show hero section above chat box when no messages
+  - Reason: Separate hero content from chat area for better visual hierarchy
+  - Change: Moved hero section (badge, title, description) to fixed position at top
+  - Reason: Hero content stays visible while chat box shows animated examples below
+  - Change: Replaced static "Quick Start Examples" list with animated chat bubble
+  - Reason: More engaging and realistic demonstration of how chat works
+  - Change: Added blinking cursor (|) to typing animation
+  - Reason: Visual indicator that text is being typed
+  - Change: Implemented CSS keyframes for cursor blink animation
+  - Reason: Smooth 1-second blink cycle for cursor
+  - Change: Conditional rendering - hero+chat view when no messages, normal chat when messages exist
+  - Reason: Seamless transition to standard chat interface after first message
+  - Change: Wrapped return in React Fragment to support multiple root elements
+  - Reason: Allow style tag alongside main div for CSS animations
+  - Change: Typing animation only runs when messages.length === 0
+  - Reason: Stop animation once user starts conversation
+  - Change: Chat box positioned below hero with flex: 1 for remaining space
+  - Reason: Fill available vertical space with scrollable chat area
+  - Change: Example questions displayed in chat bubble style (gray background, border)
+  - Reason: Match actual chat message appearance for consistency
+
+## Changes
+- changed: Main screen layout restructured with hero section above chat box
+- changed: Static example list replaced with animated typing demonstration
+- added: Typing animation cycling through 4 example questions
+- added: Character-by-character typing effect (50ms per char)
+- added: Blinking cursor animation during typing
+- added: 2-second pause between example questions
+- added: Automatic cycling through examples in infinite loop
+- added: Conditional layout - hero+chat when empty, normal chat when active
+- added: CSS keyframes for cursor blink animation
+- improved: Initial user experience with dynamic, engaging animation
+- improved: Visual demonstration of how to use the chat interface
+- improved: Smooth transition from welcome screen to active chat
+
+## Impact
+- user-visible impact: Animated typing examples appear in chat box on main screen
+- user-visible impact: Hero section (title, description) positioned above chat area
+- user-visible impact: After first message, interface switches to normal chat view
+- user-visible impact: More engaging and dynamic initial experience
+- technical impact: Added typing animation state management and effects
+- technical impact: Conditional rendering based on message count
+- technical impact: CSS animations for cursor blink
+- risks or side effects: Animation runs continuously until first message sent
+- breaking changes: None - existing chat functionality preserved
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test typing animation and layout transition
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - Consider adding pause/resume controls for typing animation
+  - Consider making typing speed configurable
+- limitations
+  - Animation loops indefinitely until user sends first message
+  - Fixed set of 4 example questions (not randomized)
+
+---
+
+# v3.6.2 - 2026-03-22 13:27
+
+## Summary
+Replaced the external Send button with a minimalistic ArrowUp icon positioned inside the input box next to the microphone icon, creating a cleaner and more modern chat interface design.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Added ArrowUp icon import from lucide-react
+  - Reason: Use consistent icon family for send action
+  - Change: Replaced large Send button with circular ArrowUp icon button
+  - Reason: Minimalistic design with icon-only interface
+  - Change: Positioned send icon inside textarea at bottom-right
+  - Reason: Keep all controls within input box for cleaner layout
+  - Change: Placed send icon to the left of mic icon (44px from right when speech supported)
+  - Reason: Logical ordering - send is primary action, mic is secondary
+  - Change: Made send icon 28px circular button with indigo background when active
+  - Reason: Match microphone icon size and style
+  - Change: Send icon shows transparent background when disabled (no input)
+  - Reason: Visual feedback that send action is unavailable
+  - Change: Send icon color gray (#475569) when disabled, white when active
+  - Reason: Clear visual state indication
+  - Change: Increased textarea paddingRight from 50px to 80px when speech supported
+  - Reason: Accommodate both send and mic icons without text overlap
+  - Change: Send icon positioned at 12px from right when speech not supported
+  - Reason: Consistent positioning whether mic icon is present or not
+  - Change: Added hover effect changing background to lighter indigo (#818CF8)
+  - Reason: Interactive feedback on hover
+  - Change: Removed external Send button and its container
+  - Reason: All controls now integrated within input box
+
+## Changes
+- changed: Send button replaced with ArrowUp icon (18px)
+- changed: Send icon positioned inside input box next to mic icon
+- changed: Icon shows indigo background (#6366F1) when message ready to send
+- changed: Icon shows transparent background when disabled
+- added: Circular button design (28px) matching mic icon style
+- added: Hover effect with lighter indigo color
+- removed: External Send button with text label
+- improved: Cleaner, more minimalistic chat interface
+- improved: Consistent icon-based controls within input box
+- improved: Better use of horizontal space
+
+## Impact
+- user-visible impact: Send button now appears as icon inside input box
+- user-visible impact: More compact and modern chat interface
+- user-visible impact: All message controls (mic, send) in one place
+- technical impact: Removed separate button element outside textarea container
+- technical impact: Adjusted textarea padding for icon positioning
+- risks or side effects: None - purely UI improvement
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test send icon positioning and functionality
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
+
+---
+
+# v3.6.1 - 2026-03-22 13:23
+
+## Summary
+Improved ChatInterface UI with minimalistic microphone icon positioned inside the input box, replaced single-line input with auto-expanding textarea for text wrapping, and added vertical scrollbar to chat messages area for better handling of long conversations.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Replaced input element with textarea for message input
+  - Reason: Enable multi-line text input with automatic text wrapping
+  - Change: Added auto-height adjustment on textarea input (max 150px)
+  - Reason: Dynamically expand textarea as user types longer messages
+  - Change: Moved microphone button inside textarea as absolute positioned icon
+  - Reason: Minimalistic design with icon overlay, similar to modern chat apps
+  - Change: Reduced microphone icon size from 20px to 18px
+  - Reason: More subtle and less intrusive appearance
+  - Change: Positioned microphone icon at bottom-right corner of textarea
+  - Reason: Doesn't interfere with text input, stays out of the way
+  - Change: Made microphone button background transparent with subtle hover
+  - Reason: Minimalistic design matching reference image
+  - Change: Added paddingRight to textarea when speech is supported (50px)
+  - Reason: Prevent text from overlapping with microphone icon
+  - Change: Added scrollbarWidth and scrollbarColor to chat messages area
+  - Reason: Styled vertical scrollbar for better visual consistency
+  - Change: Added overflowX: 'hidden' to chat area
+  - Reason: Prevent horizontal scrolling on long messages
+  - Change: Added scrollbar styling to textarea (thin, indigo accent)
+  - Reason: Consistent scrollbar appearance across all scrollable areas
+  - Change: Changed microphone icon color to subtle gray (#64748B) when idle
+  - Reason: Less visually prominent, more minimalistic
+  - Change: Red color (#EF4444) only when actively recording
+  - Reason: Clear visual feedback without being distracting when idle
+  - Change: Updated handleKeyPress type to HTMLTextAreaElement
+  - Reason: Type safety for textarea element instead of input
+
+## Changes
+- changed: Input field replaced with auto-expanding textarea
+- changed: Microphone icon moved inside input box (absolute positioned)
+- changed: Microphone icon size reduced to 18px for minimalistic look
+- changed: Microphone button background now transparent
+- changed: Icon color subtle gray when idle, red when recording
+- added: Auto-height adjustment for textarea (46px min, 150px max)
+- added: Text wrapping support for long messages
+- added: Vertical scrollbar to chat messages area
+- added: Styled scrollbars (thin, indigo accent) for chat and textarea
+- added: Padding-right to textarea to prevent text overlap with icon
+- improved: Chat UX with multi-line input support
+- improved: Visual design with minimalistic microphone icon placement
+- improved: Scrolling behavior for long conversations
+
+## Impact
+- user-visible impact: Multi-line text input with automatic wrapping
+- user-visible impact: Minimalistic microphone icon inside input box
+- user-visible impact: Smooth scrolling in chat area for long conversations
+- user-visible impact: Auto-expanding textarea up to 150px height
+- technical impact: Changed from input to textarea element
+- technical impact: Dynamic height calculation on input events
+- risks or side effects: None - purely UI improvements
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test textarea wrapping and microphone icon
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - Textarea max height capped at 150px to prevent excessive expansion
+
+---
+
+# v3.6.0 - 2026-03-22 13:15
+
+## Summary
+Implemented Chrome Web Speech API-based speech-to-text functionality for the message input area in ChatInterface. Users can now click a microphone button to dictate their messages using voice input, with visual feedback showing recording state.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Added Mic and MicOff icon imports from lucide-react
+  - Reason: Provide visual indicators for microphone button states
+  - Change: Added isListening and speechSupported state variables
+  - Reason: Track recording state and browser compatibility
+  - Change: Added recognitionRef to store SpeechRecognition instance
+  - Reason: Manage speech recognition lifecycle across component renders
+  - Change: Implemented useEffect to initialize Web Speech API on mount
+  - Reason: Set up SpeechRecognition with proper event handlers
+  - Change: Added toggleSpeechRecognition function to start/stop recording
+  - Reason: Control voice input activation and deactivation
+  - Change: Added microphone button next to message input field
+  - Reason: Provide accessible UI control for speech-to-text
+  - Change: Implemented visual feedback with red gradient and pulse animation when recording
+  - Reason: Clear indication that microphone is active and listening
+  - Change: Set recognition.continuous = false for single-phrase capture
+  - Reason: Better UX for message input (stop after each phrase)
+  - Change: Configured recognition.lang = 'en-US' for English speech
+  - Reason: Optimize recognition accuracy for English language
+  - Change: Implemented onresult handler to append transcript to input field
+  - Reason: Seamlessly integrate voice input with existing text input
+  - Change: Added error handling and cleanup in recognition lifecycle
+  - Reason: Graceful degradation and proper resource management
+
+## Changes
+- added: Speech-to-text functionality using Chrome Web Speech API
+- added: Microphone button in message input area (44x44px, rounded)
+- added: Visual feedback with red gradient background when recording
+- added: Pulse animation on microphone button during active recording
+- added: Automatic detection of browser speech recognition support
+- added: Mic/MicOff icon toggle based on recording state
+- added: Hover effects on microphone button (indigo accent)
+- added: Tooltip showing "Start voice input" or "Stop recording"
+- improved: Message input UX with voice dictation option
+- improved: Accessibility with voice input alternative to typing
+
+## Impact
+- user-visible impact: Users can now dictate messages using voice input
+- user-visible impact: Clear visual feedback when microphone is active
+- user-visible impact: Seamless integration with existing text input workflow
+- technical impact: Uses native browser Web Speech API (Chrome/Edge)
+- technical impact: No external dependencies or API costs
+- risks or side effects: Only works in Chrome/Edge browsers with speech support
+- risks or side effects: Requires microphone permissions from user
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test microphone button in Chrome browser
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - Consider adding language selection for non-English users
+  - Consider adding interim results for real-time transcription feedback
+- limitations
+  - Only works in browsers supporting Web Speech API (Chrome, Edge)
+  - Requires user to grant microphone permissions
+  - English language only (configurable via recognition.lang)
+
+---
+
 # v3.5.1 - 2026-03-22 12:40
 
 ## Summary
