@@ -13,6 +13,9 @@ from app.schemas import (
     AuthMeResponse,
     CheckoutSessionRequest,
     CheckoutSessionResponse,
+    CreateExpertAgentRequest,
+    ExpertTemplateListResponse,
+    ExpertTemplateResponse,
     FinalOutputResponse,
     LaunchRunRequest,
     PlanResponse,
@@ -22,8 +25,11 @@ from app.schemas import (
     ProjectVersionResponse,
     PromptIntakeAssessment,
     PromptIntakeRequest,
+    RateTemplateRequest,
     RunResponse,
+    SaveAgentAsTemplateRequest,
     TranscriptMessageResponse,
+    UpdateExpertTemplateRequest,
     UsageEventResponse,
     UsageOverviewResponse,
 )
@@ -39,6 +45,7 @@ from app.services.identity import IdentityService
 from app.services.intake import IntakeService
 from app.services.llm import LLMService
 from app.services.projects import ProjectService
+from app.services.expert_templates import ExpertTemplateService
 from app.services.runs import RunEventBroker, RunService
 
 
@@ -48,6 +55,7 @@ intake_service = IntakeService()
 llm_service = LLMService()
 project_service = ProjectService(intake_service=intake_service, billing_service=billing_service, llm_service=llm_service)
 conversation_service = ConversationServiceV2(llm_service=llm_service, project_service=project_service)
+expert_template_service = ExpertTemplateService()
 run_broker = RunEventBroker()
 run_service = RunService(session_factory=async_session_factory, billing_service=billing_service, broker=run_broker, llm_service=llm_service)
 
@@ -392,6 +400,123 @@ async def generate_project_from_conversation(
         session_id=session_id,
         workspace_id=context["workspace"].id,
         user_id=context["user"].id,
+    )
+
+
+# --- Expert Templates ---
+
+
+@app.post(f"{settings.api_v1_prefix}/runs/{{run_id}}/save-agent-as-template", response_model=ExpertTemplateResponse)
+async def save_agent_as_template(
+    run_id: str,
+    payload: SaveAgentAsTemplateRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.save_agent_as_template(
+        session,
+        workspace_id=context["workspace"].id,
+        user_id=context["user"].id,
+        run_id=run_id,
+        request=payload,
+    )
+
+
+@app.post(f"{settings.api_v1_prefix}/expert-templates/create", response_model=ExpertTemplateResponse)
+async def create_expert_agent(
+    payload: CreateExpertAgentRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.create_manual_agent(
+        session,
+        workspace_id=context["workspace"].id,
+        user_id=context["user"].id,
+        request=payload,
+    )
+
+
+@app.get(f"{settings.api_v1_prefix}/expert-templates", response_model=ExpertTemplateListResponse)
+async def list_expert_templates(
+    domain: str | None = None,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.list_templates(
+        session,
+        workspace_id=context["workspace"].id,
+        domain=domain,
+    )
+
+
+@app.get(f"{settings.api_v1_prefix}/expert-templates/{{template_id}}", response_model=ExpertTemplateResponse)
+async def get_expert_template(
+    template_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.get_template(
+        session,
+        workspace_id=context["workspace"].id,
+        template_id=template_id,
+    )
+
+
+@app.put(f"{settings.api_v1_prefix}/expert-templates/{{template_id}}", response_model=ExpertTemplateResponse)
+async def update_expert_template(
+    template_id: str,
+    payload: UpdateExpertTemplateRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.update_template(
+        session,
+        workspace_id=context["workspace"].id,
+        template_id=template_id,
+        request=payload,
+    )
+
+
+@app.delete(f"{settings.api_v1_prefix}/expert-templates/{{template_id}}")
+async def delete_expert_template(
+    template_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.delete_template(
+        session,
+        workspace_id=context["workspace"].id,
+        template_id=template_id,
+    )
+
+
+@app.post(f"{settings.api_v1_prefix}/expert-templates/{{template_id}}/rate", response_model=ExpertTemplateResponse)
+async def rate_expert_template(
+    template_id: str,
+    run_id: str,
+    payload: RateTemplateRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.rate_template(
+        session,
+        workspace_id=context["workspace"].id,
+        template_id=template_id,
+        run_id=run_id,
+        request=payload,
+    )
+
+
+@app.get(f"{settings.api_v1_prefix}/expert-templates/suggest/{{domain}}", response_model=list[ExpertTemplateResponse])
+async def suggest_expert_templates(
+    domain: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await expert_template_service.get_suggested_templates(
+        session,
+        workspace_id=context["workspace"].id,
+        decision_domain=domain,
     )
 
 

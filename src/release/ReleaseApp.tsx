@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import AuthScreen from './AuthScreen';
 import LandingPage from './LandingPage';
 import ChatInterface from './ChatInterface';
+import ExpertAgentsView from './ExpertAgentsView';
 import ProjectReviewScreen from './ProjectReviewScreen';
 import RunScreen from './RunScreen';
 import Sidebar from './Sidebar';
@@ -242,7 +243,9 @@ export default function ReleaseApp() {
         )}
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          {project && run ? (
+          {activeView === 'templates' ? (
+            <ExpertAgentsView token={token} />
+          ) : project && run ? (
             <RunScreen token={token} project={project} initialRun={run} onBack={() => setRun(null)} />
           ) : project ? (
             <ProjectReviewScreen token={token} project={project} onBack={handleNewDecision} onProjectUpdated={setProject} onRunLaunched={setRun} />

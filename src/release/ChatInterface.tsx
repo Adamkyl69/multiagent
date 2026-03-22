@@ -359,6 +359,7 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                           scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
                         }}
                         onFocus={e => {
+                          setIsTypingAnimation(false);
                           e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
                           e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
                         }}
@@ -577,6 +578,7 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                       scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
                     }}
                     onFocus={e => {
+                      setIsTypingAnimation(false);
                       e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
                       e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
                     }}

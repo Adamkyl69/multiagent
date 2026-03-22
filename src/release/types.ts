@@ -114,3 +114,30 @@ export interface FinalOutputResponse {
   raw_output: Record<string, unknown>;
   created_at: string;
 }
+
+export interface ExpertTemplateResponse {
+  id: string;
+  workspace_id: string;
+  created_from_run_id: string | null;
+  name: string;
+  role: string;
+  purpose: string;
+  instructions: string;
+  tone: string;
+  model_provider: string;
+  model_name: string;
+  decision_domains: string[];
+  performance_note: string | null;
+  times_used: number;
+  helpful_count: number;
+  total_ratings: number;
+  helpful_rate: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpertTemplateListResponse {
+  templates: ExpertTemplateResponse[];
+  count: number;
+  limit: number;
+}

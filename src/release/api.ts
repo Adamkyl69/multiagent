@@ -2,6 +2,8 @@ import { API_BASE_URL } from '../lib/env';
 import type {
   AuthMeResponse,
   ClarificationRequiredResponse,
+  ExpertTemplateListResponse,
+  ExpertTemplateResponse,
   FinalOutputResponse,
   ProjectResponse,
   PromptIntakeAssessment,
@@ -284,5 +286,99 @@ export async function deleteProject(token: string, projectId: string): Promise<{
 export async function deleteRun(token: string, runId: string): Promise<{ status: string }> {
   return request<{ status: string }>(`/api/v1/runs/${runId}`, token, {
     method: 'DELETE',
+  });
+}
+
+// --- Expert Templates ---
+
+export async function saveAgentAsTemplate(
+  token: string,
+  runId: string,
+  payload: { agent_index: number; decision_domains: string[]; performance_note: string },
+): Promise<ExpertTemplateResponse> {
+  return request<ExpertTemplateResponse>(`/api/v1/runs/${runId}/save-agent-as-template`, token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createExpertAgent(
+  token: string,
+  payload: {
+    name: string;
+    role: string;
+    purpose: string;
+    instructions: string;
+    tone: string;
+    model_provider: string;
+    model_name: string;
+    decision_domains: string[];
+    performance_note?: string;
+  },
+): Promise<ExpertTemplateResponse> {
+  return request<ExpertTemplateResponse>('/api/v1/expert-templates/create', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listExpertTemplates(
+  token: string,
+  domain?: string,
+): Promise<ExpertTemplateListResponse> {
+  const query = domain ? `?domain=${encodeURIComponent(domain)}` : '';
+  return request<ExpertTemplateListResponse>(`/api/v1/expert-templates${query}`, token, {
+    method: 'GET',
+  });
+}
+
+export async function getExpertTemplate(
+  token: string,
+  templateId: string,
+): Promise<ExpertTemplateResponse> {
+  return request<ExpertTemplateResponse>(`/api/v1/expert-templates/${templateId}`, token, {
+    method: 'GET',
+  });
+}
+
+export async function updateExpertTemplate(
+  token: string,
+  templateId: string,
+  payload: Partial<Pick<ExpertTemplateResponse, 'name' | 'role' | 'purpose' | 'instructions' | 'tone' | 'model_provider' | 'model_name' | 'decision_domains' | 'performance_note'>>,
+): Promise<ExpertTemplateResponse> {
+  return request<ExpertTemplateResponse>(`/api/v1/expert-templates/${templateId}`, token, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteExpertTemplate(
+  token: string,
+  templateId: string,
+): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/v1/expert-templates/${templateId}`, token, {
+    method: 'DELETE',
+  });
+}
+
+export async function rateExpertTemplate(
+  token: string,
+  templateId: string,
+  runId: string,
+  payload: { was_helpful: boolean; feedback_note?: string },
+): Promise<ExpertTemplateResponse> {
+  return request<ExpertTemplateResponse>(
+    `/api/v1/expert-templates/${templateId}/rate?run_id=${encodeURIComponent(runId)}`,
+    token,
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+}
+
+export async function suggestExpertTemplates(
+  token: string,
+  domain: string,
+): Promise<ExpertTemplateResponse[]> {
+  return request<ExpertTemplateResponse[]>(`/api/v1/expert-templates/suggest/${encodeURIComponent(domain)}`, token, {
+    method: 'GET',
   });
 }

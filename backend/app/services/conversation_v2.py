@@ -17,7 +17,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ConversationMessage, ConversationSession
+from app.models import ConversationMessage, ConversationSession, ExpertTemplate
 from app.schemas_conversation import (
     CollectedContext,
     ConversationHistoryResponse,
@@ -148,7 +148,7 @@ class ConversationServiceV2:
         if current_stage == "clarification":
             result = await self._process_clarification(context, user_message)
         elif current_stage == "frame":
-            result = await self._process_frame_confirmation(context, user_message)
+            result = await self._process_frame_confirmation(context, user_message, session, conv_session.workspace_id)
         elif current_stage == "agents":
             result = await self._process_agent_confirmation(context, user_message)
         elif current_stage == "ready":
@@ -430,6 +430,8 @@ RULES:
         self,
         context: dict[str, Any],
         user_message: str,
+        session: AsyncSession | None = None,
+        workspace_id: str | None = None,
     ) -> LLMConversationResult:
         """Process frame confirmation - user confirms or adjusts."""
         
@@ -438,8 +440,23 @@ RULES:
         user_confirms = any(signal in user_message.lower() for signal in confirm_signals)
         
         if user_confirms:
-            # Generate agents
+            # Check for relevant expert templates before generating agents
+            suggested_templates = []
+            if session and workspace_id:
+                suggested_templates = await self._get_matching_templates(
+                    session, workspace_id, context
+                )
+
+            # Generate agents (mixing templates with auto-generated)
             agents = await self._generate_expert_agents(context)
+
+            # Build suggestion metadata for templates
+            suggestions = None
+            if suggested_templates:
+                suggestions = {
+                    "expert_templates": suggested_templates,
+                    "message": f"You have {len(suggested_templates)} proven expert(s) for this type of decision.",
+                }
             
             return LLMConversationResult(
                 extracted_info={
@@ -450,6 +467,7 @@ RULES:
                 quick_replies=["Start the debate", "Adjust agents"],
                 stage_complete=True,
                 next_stage="agents",
+                suggestions=suggestions,
             )
         else:
             # User wants to adjust - use LLM to understand what they want to change
@@ -575,6 +593,50 @@ Return JSON:
         except Exception as e:
             logger.error(f"Agent generation failed: {e}")
             return self._get_default_agents()
+
+    async def _get_matching_templates(
+        self,
+        session: AsyncSession,
+        workspace_id: str,
+        context: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Find workspace expert templates matching the current decision domain."""
+        try:
+            classification = context.get("classification", {})
+            domain = classification.get("domain", "") or classification.get("decision_type", "")
+            if not domain:
+                return []
+
+            from app.schemas import VALID_DECISION_DOMAINS
+            if domain not in VALID_DECISION_DOMAINS:
+                return []
+
+            results = await session.scalars(
+                select(ExpertTemplate)
+                .where(
+                    ExpertTemplate.workspace_id == workspace_id,
+                    ExpertTemplate.is_deleted == False,  # noqa: E712
+                    ExpertTemplate.decision_domains.contains([domain]),
+                )
+                .order_by(ExpertTemplate.helpful_count.desc(), ExpertTemplate.times_used.desc())
+                .limit(3)
+            )
+            templates = list(results.all())
+            return [
+                {
+                    "id": t.id,
+                    "name": t.name,
+                    "role": t.role,
+                    "purpose": t.purpose,
+                    "times_used": t.times_used,
+                    "helpful_rate": round(t.helpful_count / max(t.total_ratings, 1) * 100),
+                    "total_ratings": t.total_ratings,
+                }
+                for t in templates
+            ]
+        except Exception as e:
+            logger.warning("Failed to fetch expert templates: %s", e)
+            return []
 
     def _get_default_agents(self) -> list[dict[str, Any]]:
         """Return default agents if generation fails."""

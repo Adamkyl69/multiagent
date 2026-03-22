@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Loader2, Play, Plus, Save, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, BookmarkCheck, Loader2, Play, Plus, Save, Star, Trash2 } from 'lucide-react';
 
-import { launchRun, updateProject } from './api';
+import { launchRun, listExpertTemplates, updateProject } from './api';
 import ModelSelector from './ModelSelector';
-import type { AgentDraft, FlowStepDraft, ProjectResponse, RunResponse } from './types';
+import type { AgentDraft, ExpertTemplateResponse, FlowStepDraft, ProjectResponse, RunResponse } from './types';
 
 interface ProjectReviewScreenProps {
   token: string;
@@ -53,9 +53,39 @@ export default function ProjectReviewScreen({
   const [saving, setSaving] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [templates, setTemplates] = useState<ExpertTemplateResponse[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const selectedAgent = draft.agents[selectedAgentIndex] ?? null;
   const estimatedRunCost = useMemo(() => Math.max(draft.agents.length * draft.flow.length, 3), [draft.agents.length, draft.flow.length]);
+
+  useEffect(() => {
+    if (showLibrary && templates.length === 0) {
+      setLoadingTemplates(true);
+      listExpertTemplates(token)
+        .then((res) => setTemplates(res.templates))
+        .catch(() => {})
+        .finally(() => setLoadingTemplates(false));
+    }
+  }, [showLibrary, templates.length, token]);
+
+  function addTemplateAsAgent(template: ExpertTemplateResponse) {
+    const newAgent: AgentDraft = {
+      name: template.name,
+      role: template.role,
+      purpose: template.purpose,
+      instructions: template.instructions,
+      tone: template.tone,
+      tools: [],
+      capabilities: { ask: true, challenge: true, cite: true, score: true, recommend: false },
+      model_provider: template.model_provider,
+      model_name: template.model_name,
+    };
+    setDraft((current) => ({ ...current, agents: [...current.agents, newAgent] }));
+    setShowLibrary(false);
+    setSelectedAgentIndex(draft.agents.length);
+  }
 
   function updateAgent(index: number, next: AgentDraft) {
     setDraft((current) => ({
@@ -342,19 +372,83 @@ export default function ProjectReviewScreen({
                 <h2 className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em]" style={{ color: '#475569' }}>
                   Agents
                 </h2>
-                <button 
-                  onClick={() => setDraft((current) => ({ ...current, agents: [...current.agents, createBlankAgent()] }))} 
-                  className="rounded-lg border px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-1.5 sm:gap-2 transition-all duration-200 hover:scale-[1.02]"
-                  style={{ 
-                    borderColor: 'rgba(255,255,255,0.07)', 
-                    background: 'rgba(255,255,255,0.035)',
-                    color: '#F1F5F9'
-                  }}
-                >
-                  <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  Add agent
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowLibrary(!showLibrary)} 
+                    className="rounded-lg border px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-1.5 sm:gap-2 transition-all duration-200 hover:scale-[1.02]"
+                    style={{ 
+                      borderColor: showLibrary ? 'rgba(99,102,241,0.35)' : 'rgba(255,255,255,0.07)', 
+                      background: showLibrary ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.035)',
+                      color: '#F1F5F9'
+                    }}
+                  >
+                    <BookmarkCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    Library
+                  </button>
+                  <button 
+                    onClick={() => setDraft((current) => ({ ...current, agents: [...current.agents, createBlankAgent()] }))} 
+                    className="rounded-lg border px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-1.5 sm:gap-2 transition-all duration-200 hover:scale-[1.02]"
+                    style={{ 
+                      borderColor: 'rgba(255,255,255,0.07)', 
+                      background: 'rgba(255,255,255,0.035)',
+                      color: '#F1F5F9'
+                    }}
+                  >
+                    <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    Add agent
+                  </button>
+                </div>
               </div>
+
+              {/* Expert Template Library Browser */}
+              {showLibrary && (
+                <div className="mb-4 rounded-xl border p-3 sm:p-4 space-y-3" style={{ borderColor: 'rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.05)' }}>
+                  <div className="flex items-center gap-2">
+                    <Star className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em]" style={{ color: '#94A3B8' }}>Expert Templates</span>
+                  </div>
+                  {loadingTemplates ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#6366F1' }} />
+                    </div>
+                  ) : templates.length === 0 ? (
+                    <p className="text-[10px] sm:text-xs py-2" style={{ color: '#64748B' }}>
+                      No saved expert templates yet. Complete a debate and save your best agents to build your library.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {templates.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => addTemplateAsAgent(t)}
+                          className="w-full text-left rounded-lg border px-3 py-2.5 transition-all duration-200 hover:scale-[1.01]"
+                          style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#0B0E1A' }}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold truncate" style={{ color: '#F1F5F9' }}>{t.name}</div>
+                              <div className="text-[10px] mt-0.5 truncate" style={{ color: '#64748B' }}>{t.role}</div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-[9px] font-bold" style={{ color: t.helpful_rate >= 0.7 ? '#4ADE80' : '#94A3B8' }}>
+                                {t.total_ratings > 0 ? `${Math.round(t.helpful_rate * 100)}% helpful` : 'New'}
+                              </div>
+                              <div className="text-[9px]" style={{ color: '#475569' }}>Used {t.times_used}x</div>
+                            </div>
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {t.decision_domains.map((d) => (
+                              <span key={d} className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ background: 'rgba(99,102,241,0.15)', color: '#A5B4FC' }}>
+                                {d.replace('_', ' ')}
+                              </span>
+                            ))}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid gap-2 sm:gap-3">
                 {draft.agents.map((agent, index) => (
                   <button

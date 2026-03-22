@@ -3,7 +3,7 @@ Before you start working, read the CHANGELOG.md file to understand the current s
 
 You must maintain a single `CHANGELOG.md` file as the only audit log for all code changes.
 
-Every meaningful task must append a versioned entry using this format:
+Every meaningful task must create a new versioned entry using this format:
 
 # vX.Y.Z - YYYY-MM-DD HH:MM
 

@@ -273,3 +273,45 @@ class ConversationMessage(Base):
     content: Mapped[str] = mapped_column(Text)
     message_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class ExpertTemplate(Base):
+    __tablename__ = "expert_templates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id"), index=True)
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    created_from_run_id: Mapped[str | None] = mapped_column(ForeignKey("debate_runs.id"), index=True, nullable=True)
+
+    # Agent definition
+    name: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(255))
+    purpose: Mapped[str] = mapped_column(Text)
+    instructions: Mapped[str] = mapped_column(Text)
+    tone: Mapped[str] = mapped_column(String(100), default="balanced")
+    model_provider: Mapped[str] = mapped_column(String(50), default="gemini")
+    model_name: Mapped[str] = mapped_column(String(100), default="gemini-1.5-flash")
+
+    # Quality metadata
+    decision_domains: Mapped[list] = mapped_column(JSON, default=list)  # ["pricing", "product"]
+    performance_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Usage tracking
+    times_used: Mapped[int] = mapped_column(Integer, default=0)
+    helpful_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_ratings: Mapped[int] = mapped_column(Integer, default=0)
+
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class TemplateUsage(Base):
+    __tablename__ = "template_usages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    template_id: Mapped[str] = mapped_column(ForeignKey("expert_templates.id"), index=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("debate_runs.id"), index=True)
+    was_helpful: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    feedback_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

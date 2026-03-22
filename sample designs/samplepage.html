@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decision Intelligence — Redesign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-base:       #06080F;
+      --bg-surface:    #0B0E1A;
+      --bg-panel:      rgba(255,255,255,0.035);
+      --border:        rgba(255,255,255,0.07);
+      --border-hover:  rgba(255,255,255,0.14);
+      --text-primary:  #F1F5F9;
+      --text-muted:    #64748B;
+      --text-dim:      #475569;
+      --accent-orange: #F97316;
+      --accent-indigo: #6366F1;
+      --accent-cyan:   #22D3EE;
+      --glow-orange:   rgba(249,115,22,0.25);
+      --glow-indigo:   rgba(99,102,241,0.2);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    h1, h2, h3, h4, .heading { font-family: 'Space Grotesk', sans-serif; }
+
+    /* ── Orb background ── */
+    .orb-wrap {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.22;
+    }
+    .orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, #6366F1 0%, transparent 70%);
+      top: -200px; left: -100px;
+    }
+    .orb-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #F97316 0%, transparent 70%);
+      bottom: -150px; right: 200px;
+      opacity: 0.14;
+    }
+    .orb-3 {
+      width: 350px; height: 350px;
+      background: radial-gradient(circle, #22D3EE 0%, transparent 70%);
+      top: 40%; left: 38%;
+      opacity: 0.08;
+    }
+
+    /* ── Dot grid ── */
+    .dot-grid {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* ── Glass mixin ── */
+    .glass {
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; width: 100vw; height: 100vh; position: relative; z-index: 1; }
+
+    /* ──────────────── SIDEBAR ──────────────── */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: rgba(6,8,15,0.8);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 20px 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sidebar-top {
+      padding: 0 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .brand-icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366F1, #F97316);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+    }
+
+    .workspace-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 40px;
+      font-size: 10.5px;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .trial-pill {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: rgba(249,115,22,0.15);
+      color: #FB923C;
+      border: 1px solid rgba(249,115,22,0.25);
+    }
+
+    .collapse-btn {
+      margin-left: auto;
+      width: 26px; height: 26px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 200ms;
+      flex-shrink: 0;
+    }
+    .collapse-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
+    .new-btn {
+      margin: 16px 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #EA580C, #F97316);
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 20px rgba(249,115,22,0.3), 0 1px 3px rgba(0,0,0,0.4);
+      transition: all 200ms;
+    }
+    .new-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px rgba(249,115,22,0.45), 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    /* Nav items */
+    .nav-section {
+      padding: 16px 16px 0;
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.08) transparent;
+    }
+    .nav-section::-webkit-scrollbar { width: 4px; }
+    .nav-section::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 180ms;
+      letter-spacing: 0.02em;
+      margin-bottom: 2px;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .nav-item.active {
+      background: rgba(99,102,241,0.12);
+      color: #A5B4FC;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+
+    .section-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 14px 10px 6px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 180ms;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .history-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+    .history-item.active { color: #CBD5E1; }
+    .history-item-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .history-item-dot.in-progress { background: #22D3EE; box-shadow: 0 0 6px rgba(34,211,238,0.6); }
+    .history-item-dot.completed  { background: #4ADE80; box-shadow: 0 0 6px rgba(74,222,128,0.5); }
+    .history-item-text { overflow: hidden; text-overflow: ellipsis; }
+
+    .load-more {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      padding: 5px 10px 10px;
+      cursor: pointer;
+      transition: color 180ms;
+    }
+    .load-more:hover { color: var(--text-muted); }
+
+    .sidebar-footer {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .user-email {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .user-avatar {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366F1, #22D3EE);
+      flex-shrink: 0;
+    }
+
+    /* ──────────────── MAIN ──────────────── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .main-inner {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 60px;
+      position: relative;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 14px;
+      border-radius: 100px;
+      border: 1px solid rgba(99,102,241,0.3);
+      background: rgba(99,102,241,0.1);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #A5B4FC;
+      margin-bottom: 28px;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #6366F1;
+      box-shadow: 0 0 8px rgba(99,102,241,0.8);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    /* Heading */
+    .main-heading {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(36px, 4.5vw, 52px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      text-align: center;
+      max-width: 560px;
+      margin-bottom: 18px;
+      background: linear-gradient(160deg, #F1F5F9 30%, #94A3B8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .main-sub {
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 430px;
+      margin-bottom: 36px;
+    }
+
+    /* Examples card */
+    .examples-card {
+      width: 100%;
+      max-width: 540px;
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 32px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .examples-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .examples-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .examples-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .example-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      margin: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      font-size: 12.5px;
+      color: #94A3B8;
+      cursor: pointer;
+      transition: all 200ms;
+    }
+    .example-chip:hover {
+      border-color: rgba(99,102,241,0.35);
+      background: rgba(99,102,241,0.07);
+      color: #C7D2FE;
+      transform: translateY(-1px);
+    }
+
+    /* Input bar */
+    .input-bar {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 8px 8px 20px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color 250ms, box-shadow 250ms;
+    }
+    .input-bar:focus-within {
+      border-color: rgba(99,102,241,0.4);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.08), 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .input-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    .input-bar input::placeholder { color: var(--text-dim); }
+    .send-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #6366F1, #818CF8);
+      border: none;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: all 200ms;
+      box-shadow: 0 3px 12px rgba(99,102,241,0.35);
+      flex-shrink: 0;
+    }
+    .send-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 20px rgba(99,102,241,0.5);
+    }
+
+    /* ──────────────── RIGHT PANEL ──────────────── */
+    .right-panel {
+      width: 300px;
+      min-width: 300px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+      background: rgba(6,8,15,0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .rp-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rp-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .rp-status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      margin-left: auto;
+    }
+
+    .rp-body {
+      flex: 1;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .rp-empty-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim);
+    }
+
+    .rp-empty-text {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: center;
+      line-height: 1.6;
+      max-width: 200px;
+    }
+
+    /* Analysis skeleton cards (shown when active) */
+    .analysis-cards { display: none; }
+
+    /* Bottom input (for main panel) */
+    .main-input-row {
+      padding: 16px 60px 20px;
+      border-top: 1px solid var(--border);
+      background: rgba(6,8,15,0.6);
+      backdrop-filter: blur(16px);
+    }
+
+    /* Sidebar nav bottom items */
+    .nav-bottom {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px 0;
+      margin-top: 8px;
+    }
+
+    /* Tooltip hint */
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: monospace;
+    }
+
+    /* Scrollbar global */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 3px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .badge-dot { animation: none; }
+      * { transition: none !important; }
+    }
+
+    /* ══════════════════════════════════════
+       AGENT CONSTELLATION VISUAL
+    ══════════════════════════════════════ */
+    .constellation-wrap {
+      position: relative;
+      width: 640px;
+      height: 160px;
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+
+    .constellation-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: visible;
+    }
+
+    .agent-cols {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 100%;
+    }
+
+    .agent-col { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Agent node card */
+    .agent-node-card {
+      width: 152px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: border-color 200ms, background 200ms, transform 150ms;
+      position: relative;
+      overflow: hidden;
+    }
+    .agent-node-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      opacity: 0;
+      transition: opacity 200ms;
+      pointer-events: none;
+    }
+    .agent-node-card.ac { --ac: #D97659; }
+    .agent-node-card.ac::before { background: radial-gradient(ellipse at 0% 50%, rgba(217,118,89,0.12), transparent 70%); }
+    .agent-node-card.ag { --ac: #4285F4; }
+    .agent-node-card.ag::before { background: radial-gradient(ellipse at 0% 50%, rgba(66,133,244,0.12), transparent 70%); }
+    .agent-node-card.ao { --ac: #10A37F; }
+    .agent-node-card.ao::before { background: radial-gradient(ellipse at 100% 50%, rgba(16,163,127,0.12), transparent 70%); }
+    .agent-node-card.ax { --ac: #9B8AFF; }
+    .agent-node-card.ax::before { background: radial-gradient(ellipse at 100% 50%, rgba(155,138,255,0.12), transparent 70%); }
+
+    .agent-node-card:hover {
+      border-color: rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      transform: translateY(-1px);
+    }
+    .agent-node-card:hover::before { opacity: 1; }
+
+    .model-avatar {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px; font-weight: 700;
+    }
+
+    .agent-card-info { flex: 1; min-width: 0; }
+    .agent-card-role {
+      font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-dim);
+      font-family: 'Space Grotesk', sans-serif;
+      margin-bottom: 2px;
+    }
+    .agent-card-model {
+      font-size: 11px; font-weight: 600;
+      color: var(--text-primary);
+      font-family: 'Space Grotesk', sans-serif;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .swap-icon { flex-shrink: 0; color: var(--text-dim); transition: color 180ms; }
+    .agent-node-card:hover .swap-icon { color: var(--text-muted); }
+
+    /* Invisible select overlay for click-to-change */
+    .agent-model-select {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+
+    /* ── Hub ── */
+    .hub-node {
+      width: 86px; height: 86px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .hub-ring {
+      position: absolute;
+      width: 86px; height: 86px;
+      border-radius: 50%;
+      border: 1px solid rgba(99,102,241,0.38);
+      animation: hub-spin 9s linear infinite;
+      background: conic-gradient(from 0deg, rgba(99,102,241,0.15) 0%, transparent 60%);
+    }
+    .hub-ring-outer {
+      position: absolute;
+      width: 102px; height: 102px;
+      top: -8px; left: -8px;
+      border-radius: 50%;
+      border: 1px solid rgba(249,115,22,0.18);
+      animation: hub-spin 14s linear infinite reverse;
+      background: conic-gradient(from 180deg, rgba(249,115,22,0.08) 0%, transparent 50%);
+    }
+    .hub-core {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, rgba(99,102,241,0.28), rgba(6,8,15,0.95) 68%);
+      border: 1px solid rgba(99,102,241,0.45);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px;
+      box-shadow: 0 0 28px rgba(99,102,241,0.22), 0 0 64px rgba(99,102,241,0.08);
+      position: relative; z-index: 1;
+    }
+    .hub-label-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 8px; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: #A5B4FC;
+    }
+    .hub-zap { color: #818CF8; }
+
+    @keyframes hub-spin { to { transform: rotate(360deg); } }
+
+    /* ── SVG flow lines ── */
+    @keyframes flow-in {
+      to { stroke-dashoffset: -28; }
+    }
+    @keyframes flow-out {
+      to { stroke-dashoffset: -28; }
+    }
+    .fline-in {
+      stroke-dasharray: 5 9;
+      animation: flow-in 1.6s linear infinite;
+    }
+    .fline-out {
+      stroke-dasharray: 5 9;
+      animation: flow-out 1.8s linear infinite;
+    }
+
+    /* ── Verdict / stats strip ── */
+    .stats-strip {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      width: 640px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.025);
+      overflow: hidden;
+      margin-bottom: 24px;
+      flex-shrink: 0;
+    }
+    .stat-cell {
+      flex: 1;
+      padding: 10px 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      position: relative;
+    }
+    .stat-cell + .stat-cell::before {
+      content: '';
+      position: absolute; left: 0; top: 20%; bottom: 20%;
+      width: 1px; background: rgba(255,255,255,0.07);
+    }
+    .stat-val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px; font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .stat-lbl {
+      font-size: 9.5px; color: var(--text-dim);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .stat-cell .stat-val.orange { color: #F97316; }
+    .stat-cell .stat-val.indigo { color: #818CF8; }
+    .stat-cell .stat-val.cyan   { color: #22D3EE; }
+    .stat-cell .stat-val.green  { color: #4ADE80; }
+  </style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="orb-wrap">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+<div class="dot-grid"></div>
+
+<div class="layout">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <div class="brand-icon">
+          <!-- Neural net icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8">
+            <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+            <path d="M12 7v4m0 0-4.5 6M12 11l4.5 6M7 18h10"/>
+          </svg>
+        </div>
+        <span class="brand-name">Decision Intelligence</span>
+        <button class="collapse-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="workspace-badge">
+        <span>Dev Workspace</span>
+        <span class="trial-pill">Trial</span>
+      </div>
+    </div>
+
+    <div style="padding:0 16px; margin-top:14px;">
+      <button class="new-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        New Decision
+      </button>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-item active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Dashboard
+      </div>
+      <div class="nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+        </svg>
+        Starred
+      </div>
+
+      <div class="section-label">In Progress</div>
+
+      <div class="history-item active">
+        <div class="history-item-dot in-progress"></div>
+        <span class="history-item-text">AI Debate Web Application for...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot in-progress"></div>
+        <span class="history-item-text">LLM Chat Product Development...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot in-progress"></div>
+        <span class="history-item-text">Which pricing model should I...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot in-progress"></div>
+        <span class="history-item-text">Career Decision: Startup vs. Cu...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot in-progress"></div>
+        <span class="history-item-text">Strategic Decision: Corporate J...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot in-progress"></div>
+        <span class="history-item-text">"Should I quit my job and join...</span>
+      </div>
+      <div class="load-more">Load more</div>
+
+      <div class="section-label">Completed</div>
+
+      <div class="history-item">
+        <div class="history-item-dot completed"></div>
+        <span class="history-item-text">AI Agent Debate Web Applicat...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot completed"></div>
+        <span class="history-item-text">Strategic Decision: Joining a St...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot completed"></div>
+        <span class="history-item-text">AI Agent Debate Web Applicat...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot completed"></div>
+        <span class="history-item-text">Strategic Decision: Startup vs. ...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot completed"></div>
+        <span class="history-item-text">AI Tutors in Schools: A District...</span>
+      </div>
+      <div class="history-item">
+        <div class="history-item-dot completed"></div>
+        <span class="history-item-text">Return to Office Debate: Balan...</span>
+      </div>
+      <div class="load-more">Load more</div>
+
+      <div class="nav-bottom">
+        <div class="nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          Search
+        </div>
+        <div class="nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+          </svg>
+          Templates
+        </div>
+        <div class="nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          Reports
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-email">
+        <div class="user-avatar"></div>
+        <span>dev@example.com</span>
+      </div>
+      <button style="background:transparent;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-dim);transition:all 180ms;" onmouseover="this.style.borderColor='var(--border-hover)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <main class="main">
+    <div class="main-inner">
+
+      <!-- Badge -->
+      <div class="badge">
+        <div class="badge-dot"></div>
+        Multi-Model Decision Intelligence
+      </div>
+
+      <!-- Heading -->
+      <h1 class="main-heading" style="max-width:520px;">
+        Your AI council,<br>
+        <span style="background:linear-gradient(120deg,#F97316 0%,#6366F1 60%,#22D3EE 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">debating every angle.</span>
+      </h1>
+
+      <p class="main-sub" style="max-width:400px;margin-bottom:22px;">
+        Assign Claude, GPT-4, Gemini &amp; Grok as specialist agents — they debate, challenge, and converge on the optimal decision.
+      </p>
+
+      <!-- ══ Agent Constellation ══ -->
+      <div class="constellation-wrap">
+
+        <!-- Animated SVG connection lines -->
+        <svg class="constellation-svg" viewBox="0 0 640 160" preserveAspectRatio="none">
+          <defs>
+            <path id="p-claude"  d="M152 40  C210 40  240 80 278 80"/>
+            <path id="p-gemini"  d="M152 120 C210 120 240 80 278 80"/>
+            <path id="p-gpt"     d="M362 80  C400 80  430 40 488 40"/>
+            <path id="p-grok"    d="M362 80  C400 80  430 120 488 120"/>
+
+            <linearGradient id="lg-claude" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#D97659" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#6366F1" stop-opacity="0.4"/>
+            </linearGradient>
+            <linearGradient id="lg-gemini" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#4285F4" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#6366F1" stop-opacity="0.4"/>
+            </linearGradient>
+            <linearGradient id="lg-gpt" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#6366F1" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#10A37F" stop-opacity="0.7"/>
+            </linearGradient>
+            <linearGradient id="lg-grok" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#6366F1" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#9B8AFF" stop-opacity="0.7"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Base paths (faint static) -->
+          <path d="M152 40  C210 40  240 80 278 80" fill="none" stroke="rgba(217,118,89,0.18)" stroke-width="1.5"/>
+          <path d="M152 120 C210 120 240 80 278 80" fill="none" stroke="rgba(66,133,244,0.18)" stroke-width="1.5"/>
+          <path d="M362 80  C400 80  430 40 488 40"  fill="none" stroke="rgba(16,163,127,0.18)" stroke-width="1.5"/>
+          <path d="M362 80  C400 80  430 120 488 120" fill="none" stroke="rgba(155,138,255,0.18)" stroke-width="1.5"/>
+
+          <!-- Animated dash lines -->
+          <path d="M152 40  C210 40  240 80 278 80" fill="none" stroke="url(#lg-claude)" stroke-width="1.5" class="fline-in" style="animation-delay:0s;"/>
+          <path d="M152 120 C210 120 240 80 278 80" fill="none" stroke="url(#lg-gemini)" stroke-width="1.5" class="fline-in" style="animation-delay:0.55s;"/>
+          <path d="M362 80  C400 80  430 40 488 40"  fill="none" stroke="url(#lg-gpt)"    stroke-width="1.5" class="fline-out" style="animation-delay:0.28s;"/>
+          <path d="M362 80  C400 80  430 120 488 120" fill="none" stroke="url(#lg-grok)"  stroke-width="1.5" class="fline-out" style="animation-delay:0.82s;"/>
+
+          <!-- Travelling dots -->
+          <circle r="3.5" fill="#D97659" opacity="0.95">
+            <animateMotion dur="1.9s" repeatCount="indefinite" begin="0s"><mpath href="#p-claude"/></animateMotion>
+          </circle>
+          <circle r="3.5" fill="#4285F4" opacity="0.95">
+            <animateMotion dur="2.3s" repeatCount="indefinite" begin="0.5s"><mpath href="#p-gemini"/></animateMotion>
+          </circle>
+          <circle r="3.5" fill="#10A37F" opacity="0.9">
+            <animateMotion dur="1.7s" repeatCount="indefinite" begin="0.85s"><mpath href="#p-gpt"/></animateMotion>
+          </circle>
+          <circle r="3.5" fill="#9B8AFF" opacity="0.9">
+            <animateMotion dur="2.1s" repeatCount="indefinite" begin="0.2s"><mpath href="#p-grok"/></animateMotion>
+          </circle>
+        </svg>
+
+        <!-- Agent card columns + hub -->
+        <div class="agent-cols">
+
+          <!-- LEFT — input agents -->
+          <div class="agent-col">
+
+            <!-- Claude -->
+            <div class="agent-node-card ac" id="card-claude" title="Click to change model">
+              <div class="model-avatar" style="background:rgba(217,118,89,0.14);border:1px solid rgba(217,118,89,0.32);">
+                <!-- Anthropic "A" glyph -->
+                <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
+                  <path d="M57.2 14.5L82.5 80h-16L60 60H40L33.5 80h-16L43 14.5h14.2zM50 28l-7.5 22h15L50 28z" fill="#D97659"/>
+                </svg>
+              </div>
+              <div class="agent-card-info">
+                <div class="agent-card-role">Analyst</div>
+                <div class="agent-card-model" id="claude-label">Claude 3.5</div>
+              </div>
+              <div class="swap-icon">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+              </div>
+              <select class="agent-model-select" onchange="swapModel('claude','claude-label',this)">
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="claude-3-opus">Claude 3 Opus</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="grok-beta">Grok Beta</option>
+              </select>
+            </div>
+
+            <!-- Gemini -->
+            <div class="agent-node-card ag" id="card-gemini" title="Click to change model">
+              <div class="model-avatar" style="background:rgba(66,133,244,0.14);border:1px solid rgba(66,133,244,0.32);">
+                <!-- Gemini sparkle -->
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#4285F4">
+                  <path d="M12 2C12 2 11.5 7.5 9 10S2 12 2 12s5.5.5 7 3 1 7 1 7 .5-5.5 3-7 7-1 7-1-5.5-.5-7-3-1-9-1-9z"/>
+                </svg>
+              </div>
+              <div class="agent-card-info">
+                <div class="agent-card-role">Strategist</div>
+                <div class="agent-card-model" id="gemini-label">Gemini 1.5</div>
+              </div>
+              <div class="swap-icon">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+              </div>
+              <select class="agent-model-select" onchange="swapModel('gemini','gemini-label',this)">
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="grok-beta">Grok Beta</option>
+              </select>
+            </div>
+
+          </div><!-- /left col -->
+
+          <!-- CENTER — hub -->
+          <div class="hub-node">
+            <div class="hub-ring-outer"></div>
+            <div class="hub-ring"></div>
+            <div class="hub-core">
+              <div class="hub-label-text">Decision</div>
+              <div class="hub-zap">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT — output agents -->
+          <div class="agent-col">
+
+            <!-- ChatGPT -->
+            <div class="agent-node-card ao" id="card-gpt" title="Click to change model">
+              <div class="model-avatar" style="background:rgba(16,163,127,0.14);border:1px solid rgba(16,163,127,0.32);">
+                <!-- OpenAI simplified logo -->
+                <svg width="20" height="20" viewBox="0 0 41 41" fill="#10A37F">
+                  <path d="M37.5 16.7a10.4 10.4 0 00-.9-8.5 10.6 10.6 0 00-11.3-5.1A10.4 10.4 0 0017.6 0a10.5 10.5 0 00-10 7.3 10.5 10.5 0 00-7 5.1 10.6 10.6 0 001.3 12.4 10.4 10.4 0 00.9 8.5 10.6 10.6 0 0011.3 5.1 10.4 10.4 0 007.7 3.1 10.5 10.5 0 0010-7.3 10.5 10.5 0 007-5.1 10.6 10.6 0 00-1.3-12.4zM22.6 38.2a7.8 7.8 0 01-5-1.8l.2-.1 8.4-4.8a1.4 1.4 0 00.7-1.2V19l3.5 2a.1.1 0 010 .1v9.7a7.8 7.8 0 01-7.8 7.4zM6 31.5a7.7 7.7 0 01-.9-5.2l.2.1 8.3 4.8a1.4 1.4 0 001.4 0L25 25.6v4a.1.1 0 010 .1L16.4 34a7.8 7.8 0 01-10.4-2.5zm-1.7-17a7.7 7.7 0 014.1-3.4v9.8a1.4 1.4 0 00.7 1.2l9.9 5.7-3.5 2a.1.1 0 01-.1 0L6.8 23a7.8 7.8 0 01-2.5-8.5zm28.8 6.7l-9.9-5.7 3.5-2a.1.1 0 01.1 0l8.6 5a7.8 7.8 0 01-1.2 14l-.1-.1V21.5a1.4 1.4 0 00-.7-1.3h-.3zM34.7 18l-.2-.1-8.3-4.8a1.4 1.4 0 00-1.4 0L15 18.7v-4a.1.1 0 010-.1L23.6 10a7.8 7.8 0 0111.1 8.1v-.1zM13.5 22.7L10 20.7a.1.1 0 010-.1v-9.7a7.8 7.8 0 0112.8-6l-.2.1-8.3 4.8a1.4 1.4 0 00-.7 1.2l-.1 11.7zm1.9-4.1l4.4-2.6 4.5 2.6v5l-4.4 2.6-4.5-2.6V18.6z"/>
+                </svg>
+              </div>
+              <div class="agent-card-info">
+                <div class="agent-card-role">Critic</div>
+                <div class="agent-card-model" id="gpt-label">GPT-4o</div>
+              </div>
+              <div class="swap-icon">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+              </div>
+              <select class="agent-model-select" onchange="swapModel('gpt','gpt-label',this)">
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="o1">o1</option>
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="grok-beta">Grok Beta</option>
+              </select>
+            </div>
+
+            <!-- Grok -->
+            <div class="agent-node-card ax" id="card-grok" title="Click to change model">
+              <div class="model-avatar" style="background:rgba(155,138,255,0.14);border:1px solid rgba(155,138,255,0.32);">
+                <!-- X/Grok logo -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#9B8AFF">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </div>
+              <div class="agent-card-info">
+                <div class="agent-card-role">Facilitator</div>
+                <div class="agent-card-model" id="grok-label">Grok Beta</div>
+              </div>
+              <div class="swap-icon">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+              </div>
+              <select class="agent-model-select" onchange="swapModel('grok','grok-label',this)">
+                <option value="grok-beta">Grok Beta</option>
+                <option value="grok-2">Grok 2</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              </select>
+            </div>
+
+          </div><!-- /right col -->
+        </div><!-- /agent-cols -->
+      </div><!-- /constellation-wrap -->
+
+      <!-- Stats strip -->
+      <div class="stats-strip">
+        <div class="stat-cell">
+          <span class="stat-val orange">4</span>
+          <span class="stat-lbl">AI Models</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-val indigo">5</span>
+          <span class="stat-lbl">Debate Phases</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-val cyan">∞</span>
+          <span class="stat-lbl">Perspectives</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-val green">1</span>
+          <span class="stat-lbl">Best Decision</span>
+        </div>
+      </div>
+
+      <!-- Hint -->
+      <p style="font-size:11.5px;color:var(--text-dim);text-align:center;margin-bottom:16px;">
+        Describe your decision below · Press <span class="kbd">Enter</span> to send
+      </p>
+
+    </div>
+
+    <script>
+      const MODEL_LABELS = {
+        'claude-3-5-sonnet': 'Claude 3.5',
+        'claude-3-opus':     'Claude Opus',
+        'gpt-4o':            'GPT-4o',
+        'gpt-4o-mini':       'GPT-4o Mini',
+        'o1':                'OpenAI o1',
+        'gemini-1.5-pro':    'Gemini 1.5',
+        'gemini-2.0-flash':  'Gemini 2.0',
+        'grok-beta':         'Grok Beta',
+        'grok-2':            'Grok 2',
+      };
+      function swapModel(agent, labelId, sel) {
+        document.getElementById(labelId).textContent = MODEL_LABELS[sel.value] || sel.value;
+      }
+    </script>
+
+    <!-- Input bar (bottom) -->
+    <div class="main-input-row">
+      <div class="input-bar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1.8" style="flex-shrink:0;">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" placeholder="What decision do you need to make?" />
+        <button class="send-btn">
+          Send
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════ RIGHT PANEL ═══════════ -->
+  <aside class="right-panel">
+    <div class="rp-header">
+      <div style="width:28px;height:28px;border-radius:7px;background:var(--bg-panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.8">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+        </svg>
+      </div>
+      <span class="rp-title">Decision Analysis</span>
+      <div class="rp-status-dot"></div>
+    </div>
+
+    <div class="rp-body">
+      <!-- Empty state icon -->
+      <div class="rp-empty-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m1.343-5.657-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+        </svg>
+      </div>
+      <p class="rp-empty-text">Ask your question to get started. Analysis will appear here.</p>
+
+      <!-- Skeleton preview cards -->
+      <div style="width:100%;margin-top:8px;display:flex;flex-direction:column;gap:8px;opacity:0.35;">
+        <div style="height:48px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel);padding:10px 12px;display:flex;align-items:center;gap:8px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:#6366F1;flex-shrink:0;"></div>
+          <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.08);flex:1;"></div>
+        </div>
+        <div style="height:48px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel);padding:10px 12px;display:flex;align-items:center;gap:8px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:#22D3EE;flex-shrink:0;"></div>
+          <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.08);flex:1;"></div>
+        </div>
+        <div style="height:48px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel);padding:10px 12px;display:flex;align-items:center;gap:8px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:#4ADE80;flex-shrink:0;"></div>
+          <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.08);flex:1;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right panel tools footer -->
+    <div style="padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px;">
+      <button style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-dim);font-size:11.5px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 200ms;display:flex;align-items:center;justify-content:center;gap:5px;" onmouseover="this.style.borderColor='var(--border-hover)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Perspectives
+      </button>
+      <button style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-dim);font-size:11.5px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 200ms;display:flex;align-items:center;justify-content:center;gap:5px;" onmouseover="this.style.borderColor='var(--border-hover)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Summary
+      </button>
+    </div>
+  </aside>
+
+</div>
+
+</body>
+</html>

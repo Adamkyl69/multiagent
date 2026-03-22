@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review &amp; Fine-tune Project — Decision Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg-base:       #06080F;
+      --bg-surface:    #0B0E1A;
+      --bg-panel:      rgba(255,255,255,0.035);
+      --bg-panel-hov:  rgba(255,255,255,0.055);
+      --border:        rgba(255,255,255,0.07);
+      --border-hover:  rgba(255,255,255,0.14);
+      --border-indigo: rgba(99,102,241,0.5);
+      --text-primary:  #F1F5F9;
+      --text-muted:    #64748B;
+      --text-dim:      #475569;
+      --accent-orange: #F97316;
+      --accent-orange-dark: #EA580C;
+      --accent-indigo: #6366F1;
+      --accent-cyan:   #22D3EE;
+      --glow-orange:   rgba(249,115,22,0.28);
+      --glow-indigo:   rgba(99,102,241,0.22);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    h1, h2, h3, h4, .heading { font-family: 'Space Grotesk', sans-serif; }
+
+    /* ── Orb background ── */
+    .orb-wrap {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(85px);
+    }
+    .orb-1 {
+      width: 680px; height: 680px;
+      background: radial-gradient(circle, #6366F1 0%, transparent 70%);
+      top: -260px; left: -140px;
+      opacity: 0.17;
+    }
+    .orb-2 {
+      width: 560px; height: 560px;
+      background: radial-gradient(circle, #F97316 0%, transparent 70%);
+      bottom: -200px; right: -60px;
+      opacity: 0.12;
+    }
+    .orb-3 {
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, #22D3EE 0%, transparent 70%);
+      top: 42%; left: 44%;
+      opacity: 0.065;
+    }
+
+    /* ── Dot grid ── */
+    .dot-grid {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.042) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* ── Glass mixin ── */
+    .glass {
+      background: var(--bg-panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; width: 100vw; height: 100vh; position: relative; z-index: 1; }
+
+    /* ══════════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════════ */
+    .sidebar {
+      width: 220px; min-width: 220px;
+      height: 100vh;
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: rgba(6,8,15,0.82);
+      backdrop-filter: blur(24px);
+      padding: 20px 0;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .sidebar-top {
+      padding: 0 16px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 3px;
+    }
+
+    .brand-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: linear-gradient(135deg, #6366F1, #F97316);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px; font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .workspace-badge {
+      margin-left: 38px;
+      font-size: 10px; color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .trial-pill {
+      display: inline-block;
+      font-size: 8.5px; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 6px; border-radius: 20px;
+      background: rgba(249,115,22,0.15);
+      color: #FB923C;
+      border: 1px solid rgba(249,115,22,0.25);
+      margin-left: 4px;
+    }
+
+    .new-btn {
+      margin: 14px 16px 0;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 9px 14px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #EA580C, #F97316);
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11.5px; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      cursor: pointer; border: none;
+      box-shadow: 0 4px 20px rgba(249,115,22,0.32);
+      transition: all 200ms;
+    }
+    .new-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px rgba(249,115,22,0.48);
+    }
+
+    .nav-section { padding: 14px 16px 0; flex: 1; overflow-y: auto; }
+
+    .nav-label {
+      font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-dim);
+      font-family: 'Space Grotesk', sans-serif;
+      padding: 0 4px; margin-bottom: 6px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 8px;
+      font-size: 12.5px; color: var(--text-muted);
+      cursor: pointer; transition: all 160ms;
+      border: 1px solid transparent;
+      margin-bottom: 2px;
+    }
+    .nav-item:hover {
+      background: var(--bg-panel-hov); color: var(--text-primary);
+      border-color: var(--border);
+    }
+    .nav-item.active {
+      background: rgba(99,102,241,0.1);
+      border-color: rgba(99,102,241,0.35);
+      color: #C7D2FE;
+    }
+    .nav-icon { width: 14px; height: 14px; opacity: 0.7; flex-shrink: 0; }
+
+    /* ══════════════════════════════════════════
+       MAIN AREA
+    ══════════════════════════════════════════ */
+    .main {
+      flex: 1;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 28px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(6,8,15,0.6);
+      backdrop-filter: blur(16px);
+      flex-shrink: 0;
+      gap: 16px;
+    }
+
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+
+    .btn-back {
+      display: flex; align-items: center; gap: 7px;
+      padding: 8px 14px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 0.02em;
+      transition: border-color 200ms, background 200ms;
+      flex-shrink: 0;
+    }
+    .btn-back:hover { border-color: var(--border-hover); background: var(--bg-panel-hov); }
+
+    .page-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px; font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .page-subtitle {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px;
+    }
+
+    .topbar-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    .btn-save {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 12.5px; font-weight: 600;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: border-color 200ms, background 200ms;
+    }
+    .btn-save:hover { border-color: var(--border-hover); background: var(--bg-panel-hov); }
+
+    .btn-launch {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 20px;
+      background: linear-gradient(135deg, #EA580C, #F97316);
+      border: none; border-radius: 8px;
+      color: #fff;
+      font-size: 12.5px; font-weight: 700;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 0.025em;
+      box-shadow: 0 4px 22px rgba(249,115,22,0.38);
+      transition: opacity 180ms, box-shadow 180ms, transform 150ms;
+    }
+    .btn-launch:hover {
+      opacity: 0.88; transform: translateY(-1px);
+      box-shadow: 0 8px 32px rgba(249,115,22,0.55);
+    }
+
+    /* ── Content area ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 22px 28px 40px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.08) transparent;
+    }
+
+    /* ── 3-col grid ── */
+    .grid-3col {
+      display: grid;
+      grid-template-columns: 1.1fr 0.88fr 0.78fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .col { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Glass card ── */
+    .card {
+      background: var(--bg-panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 18px 20px;
+    }
+
+    /* ── Section labels ── */
+    .section-label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 9.5px; font-weight: 700;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .field-label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 9px; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 5px;
+    }
+
+    /* ── Form fields ── */
+    .field-input, .field-textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text-primary);
+      font-size: 12.5px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      resize: none;
+      transition: border-color 200ms, box-shadow 200ms;
+    }
+    .field-input:focus, .field-textarea:focus {
+      border-color: rgba(99,102,241,0.6);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .field-input.title-input {
+      font-size: 15px; font-weight: 700;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .field-readonly {
+      width: 100%;
+      background: rgba(255,255,255,0.025);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    /* ── Field group ── */
+    .field-group { margin-bottom: 16px; }
+    .field-group:last-child { margin-bottom: 0; }
+
+    /* ── Card header row ── */
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .card-header .section-label { margin-bottom: 0; }
+
+    /* ── Mini add button ── */
+    .btn-add {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 11px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 10.5px; font-weight: 600;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: border-color 180ms, background 180ms;
+    }
+    .btn-add:hover { border-color: var(--border-hover); background: var(--bg-panel-hov); }
+
+    /* ════════════════════
+       DEBATE FLOW
+    ════════════════════ */
+    .flow-steps { display: flex; flex-direction: column; gap: 9px; }
+
+    .flow-step {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 13px;
+      transition: border-color 200ms, background 200ms;
+    }
+    .flow-step:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); }
+
+    .flow-step-header {
+      display: flex; align-items: center; gap: 9px; margin-bottom: 9px;
+    }
+
+    .step-number {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: linear-gradient(135deg, #6366F1, #818CF8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800;
+      font-family: 'Space Grotesk', sans-serif;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 12px rgba(99,102,241,0.4);
+    }
+
+    .step-name-input {
+      flex: 1;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 6px 10px;
+      color: var(--text-primary);
+      font-size: 12px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 200ms;
+    }
+    .step-name-input:focus { border-color: rgba(99,102,241,0.6); }
+
+    .btn-delete-step {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: 1px solid rgba(244,63,94,0.22);
+      border-radius: 6px;
+      color: #F43F5E;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 180ms, border-color 180ms;
+    }
+    .btn-delete-step:hover { background: rgba(244,63,94,0.12); border-color: rgba(244,63,94,0.45); }
+
+    .step-desc {
+      width: 100%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 10px;
+      color: var(--text-muted);
+      font-size: 11.5px; line-height: 1.6;
+      font-family: 'DM Sans', sans-serif;
+      outline: none; resize: none;
+      transition: border-color 200ms;
+    }
+    .step-desc:focus { border-color: rgba(99,102,241,0.6); color: var(--text-primary); }
+
+    /* ════════════════════
+       AGENT ROSTER
+    ════════════════════ */
+    .agent-list { display: flex; flex-direction: column; gap: 7px; }
+
+    .agent-card {
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 200ms, background 200ms;
+      text-align: left; width: 100%;
+    }
+    .agent-card:hover:not(.selected) {
+      border-color: rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.05);
+    }
+    .agent-card.selected {
+      border-color: rgba(99,102,241,0.48);
+      background: rgba(99,102,241,0.1);
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.18) inset;
+    }
+
+    .agent-card-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 8px; margin-bottom: 5px;
+    }
+
+    .agent-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12.5px; font-weight: 700;
+      color: var(--text-primary); line-height: 1.3;
+    }
+
+    .agent-role {
+      font-size: 10.5px; color: var(--text-muted); margin-top: 2px;
+    }
+
+    .tone-badge {
+      font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 7px; border-radius: 5px;
+      font-family: 'Space Grotesk', sans-serif;
+      flex-shrink: 0; margin-top: 1px;
+    }
+
+    .agent-purpose {
+      font-size: 10.5px; color: var(--text-dim);
+      line-height: 1.55;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ════════════════════
+       SELECTED AGENT PANEL
+    ════════════════════ */
+    .agent-detail { display: flex; flex-direction: column; gap: 11px; }
+
+    .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+    .btn-delete-agent {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      width: 100%; padding: 9px;
+      background: transparent;
+      border: 1px solid rgba(244,63,94,0.22);
+      border-radius: 8px;
+      color: #F43F5E;
+      font-size: 11.5px; font-weight: 600;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: background 180ms, border-color 180ms;
+    }
+    .btn-delete-agent:hover { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.42); }
+
+    /* ── Model selector ── */
+    .model-section .section-label { margin-bottom: 8px; }
+
+    .model-select {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text-primary);
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      transition: border-color 200ms;
+    }
+    .model-select:focus { border-color: rgba(99,102,241,0.6); }
+
+    .model-info {
+      margin-top: 8px;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+    }
+    .model-info-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: var(--text-muted);
+    }
+    .model-info-row + .model-info-row { margin-top: 6px; }
+    .model-info-val {
+      font-weight: 600; color: var(--text-primary);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* ════════════════════
+       LAUNCH READINESS
+    ════════════════════ */
+    .metrics { display: flex; flex-direction: column; gap: 7px; margin-bottom: 13px; }
+
+    .metric-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.028);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: background 180ms;
+    }
+    .metric-row:hover { background: rgba(255,255,255,0.05); }
+
+    .metric-label { font-size: 11.5px; color: var(--text-muted); }
+
+    .metric-val {
+      font-size: 12.5px; font-weight: 700;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .assumption-warn {
+      display: flex; align-items: flex-start; gap: 9px;
+      padding: 10px 12px;
+      background: rgba(245,158,11,0.07);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 8px;
+      font-size: 11.5px; color: #FCD34D;
+      line-height: 1.55; margin-bottom: 13px;
+    }
+
+    .btn-launch-full {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 12px;
+      background: linear-gradient(135deg, #EA580C, #F97316);
+      border: none; border-radius: 10px;
+      color: #fff;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 0.035em;
+      box-shadow: 0 4px 22px rgba(249,115,22,0.35), 0 1px 4px rgba(0,0,0,0.3);
+      transition: opacity 180ms, box-shadow 180ms, transform 150ms;
+    }
+    .btn-launch-full:hover {
+      opacity: 0.88; transform: translateY(-1px);
+      box-shadow: 0 8px 36px rgba(249,115,22,0.55);
+    }
+    .btn-launch-full:active { transform: translateY(0); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+    /* ── SVG icons ── */
+    .icon { display: inline-block; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- Ambient orbs -->
+<div class="orb-wrap">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+<div class="dot-grid"></div>
+
+<div class="layout">
+
+  <!-- ══════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <span class="brand-name">Debator</span>
+        <span class="trial-pill">Pro</span>
+      </div>
+      <div class="workspace-badge">Personal Workspace</div>
+    </div>
+
+    <button class="new-btn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Decision
+    </button>
+
+    <nav class="nav-section">
+      <div class="nav-label" style="margin-top:2px;">Navigation</div>
+
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Overview
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        In Progress
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Completed
+      </div>
+
+      <div class="nav-label" style="margin-top:16px;">Recent Debates</div>
+
+      <div class="nav-item" style="font-size:11.5px;">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Buy New vs Used Car
+      </div>
+      <div class="nav-item" style="font-size:11.5px;">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Remote vs Office Policy
+      </div>
+      <div class="nav-item" style="font-size:11.5px;">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Q3 Budget Allocation
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ══════════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="btn-back">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+        <div>
+          <div class="page-title">Review &amp; fine-tune your project</div>
+          <div class="page-subtitle">Edit the generated agents, objective, and debate flow before launch.</div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn-save">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save changes
+        </button>
+        <button class="btn-launch">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Launch debate
+        </button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="grid-3col">
+
+        <!-- ════════════════════════════════════
+             COL 1 — Project details + Flow
+        ════════════════════════════════════ -->
+        <div class="col">
+
+          <!-- Project metadata -->
+          <div class="card">
+            <div class="field-group">
+              <div class="section-label">Project title</div>
+              <input class="field-input title-input" type="text" value="Buy a New Car vs. Used Car" />
+            </div>
+
+            <div class="field-group">
+              <div class="section-label">Objective</div>
+              <textarea class="field-textarea" rows="4">To make the best possible decision on whether to purchase a brand new car or a used car, considering all relevant factors including total cost of ownership, reliability, financing options, and lifestyle fit.</textarea>
+            </div>
+
+            <div class="field-group">
+              <div class="section-label">Source prompt</div>
+              <div class="field-readonly">Decision topic: Whether to buy a brand new car or a used car based on financial goals, reliability, and lifestyle — including factors like fuel efficiency, insurance, maintenance costs, and depreciation.</div>
+            </div>
+          </div>
+
+          <!-- Debate flow -->
+          <div class="card">
+            <div class="card-header">
+              <div class="section-label">Debate flow</div>
+              <button class="btn-add">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add phase
+              </button>
+            </div>
+
+            <div class="flow-steps">
+
+              <div class="flow-step">
+                <div class="flow-step-header">
+                  <div class="step-number">1</div>
+                  <input class="step-name-input" type="text" value="Information Gathering" />
+                  <button class="btn-delete-step">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+                <textarea class="step-desc" rows="2">Each agent presents their initial findings and analyses regarding their area of expertise (financial, reliability, lifestyle).</textarea>
+              </div>
+
+              <div class="flow-step">
+                <div class="flow-step-header">
+                  <div class="step-number">2</div>
+                  <input class="step-name-input" type="text" value="Cross-Examination &amp; Challenges" />
+                  <button class="btn-delete-step">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+                <textarea class="step-desc" rows="2">Agents and decision-makers ask questions to clarify points, challenge assumptions, and probe deeper into the presented information.</textarea>
+              </div>
+
+              <div class="flow-step">
+                <div class="flow-step-header">
+                  <div class="step-number">3</div>
+                  <input class="step-name-input" type="text" value="Synthesis and Option Evaluation" />
+                  <button class="btn-delete-step">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+                <textarea class="step-desc" rows="2">The Decision Facilitator synthesizes the gathered information, highlighting the pros and cons of each option (new or used car) based on the collective input.</textarea>
+              </div>
+
+              <div class="flow-step">
+                <div class="flow-step-header">
+                  <div class="step-number">4</div>
+                  <input class="step-name-input" type="text" value="Risk Assessment and Uncertainty" />
+                  <button class="btn-delete-step">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+                <textarea class="step-desc" rows="2">Explicitly identify and discuss the risks and uncertainties associated with both buying a new car and a used car, addressing potential mitigation strategies.</textarea>
+              </div>
+
+              <div class="flow-step">
+                <div class="flow-step-header">
+                  <div class="step-number">5</div>
+                  <input class="step-name-input" type="text" value="Decision Recommendation" />
+                  <button class="btn-delete-step">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+                <textarea class="step-desc" rows="2">Based on the comprehensive evaluation, the Decision Facilitator makes a data-backed recommendation on the optimal decision.</textarea>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════
+             COL 2 — Agent roster
+        ════════════════════════════════════ -->
+        <div class="col">
+          <div class="card" style="flex:1;">
+            <div class="card-header">
+              <div class="section-label">Agents</div>
+              <button class="btn-add" onclick="addAgent()">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add agent
+              </button>
+            </div>
+
+            <div class="agent-list" id="agent-list">
+
+              <button class="agent-card selected" onclick="selectAgent(this, 0)">
+                <div class="agent-card-top">
+                  <div>
+                    <div class="agent-name">Financial Analyst</div>
+                    <div class="agent-role">Financial Expert</div>
+                  </div>
+                  <span class="tone-badge" style="background:rgba(34,211,238,0.12);color:#22D3EE;border:1px solid rgba(34,211,238,0.25);">Analytical</span>
+                </div>
+                <div class="agent-purpose">To analyze the financial implications of buying a new vs. used car, including total cost of ownership, financing, and depreciation.</div>
+              </button>
+
+              <button class="agent-card" onclick="selectAgent(this, 1)">
+                <div class="agent-card-top">
+                  <div>
+                    <div class="agent-name">Reliability Assessor</div>
+                    <div class="agent-role">Automotive Expert</div>
+                  </div>
+                  <span class="tone-badge" style="background:rgba(148,163,184,0.12);color:#94A3B8;border:1px solid rgba(148,163,184,0.25);">Cautious</span>
+                </div>
+                <div class="agent-purpose">To assess the reliability and maintenance needs of new and used cars, considering model history and industry data.</div>
+              </button>
+
+              <button class="agent-card" onclick="selectAgent(this, 2)">
+                <div class="agent-card-top">
+                  <div>
+                    <div class="agent-name">Features &amp; Lifestyle Matchmaker</div>
+                    <div class="agent-role">Consumer Advocate</div>
+                  </div>
+                  <span class="tone-badge" style="background:rgba(167,139,250,0.12);color:#A78BFA;border:1px solid rgba(167,139,250,0.25);">Empathetic</span>
+                </div>
+                <div class="agent-purpose">To evaluate the features, technology, and suitability of new and used cars based on family lifestyle factors.</div>
+              </button>
+
+              <button class="agent-card" onclick="selectAgent(this, 3)">
+                <div class="agent-card-top">
+                  <div>
+                    <div class="agent-name">Decision Facilitator</div>
+                    <div class="agent-role">Moderator</div>
+                  </div>
+                  <span class="tone-badge" style="background:rgba(99,102,241,0.12);color:#6366F1;border:1px solid rgba(99,102,241,0.25);">Balanced</span>
+                </div>
+                <div class="agent-purpose">To guide the decision-making process, synthesize information from other agents, and facilitate a structured, unbiased conclusion.</div>
+              </button>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════
+             COL 3 — Agent editor + Readiness
+        ════════════════════════════════════ -->
+        <div class="col">
+
+          <!-- Agent editor -->
+          <div class="card" id="agent-editor">
+            <div class="section-label">Selected agent</div>
+
+            <div class="agent-detail">
+              <div>
+                <div class="field-label">Name</div>
+                <input class="field-input" type="text" id="ed-name" value="Financial Analyst" style="font-weight:700;font-family:'Space Grotesk',sans-serif;" />
+              </div>
+              <div>
+                <div class="field-label">Role</div>
+                <input class="field-input" type="text" id="ed-role" value="Financial Expert" />
+              </div>
+              <div>
+                <div class="field-label">Purpose</div>
+                <textarea class="field-textarea" id="ed-purpose" rows="3">To analyze the financial implications of buying a new vs. used car, including total cost of ownership, financing options, and depreciation.</textarea>
+              </div>
+              <div>
+                <div class="field-label">Instructions</div>
+                <textarea class="field-textarea" id="ed-instructions" rows="4">Evaluate the long-term financial impact of both options. Provide detailed cost breakdowns including purchase price, financing interest, insurance premiums, maintenance estimates, and resale value projections. Highlight potential savings and risks associated with each choice.</textarea>
+              </div>
+              <div>
+                <div class="field-label">Tone</div>
+                <input class="field-input" type="text" id="ed-tone" value="Objective and data-driven" />
+              </div>
+
+              <!-- Model selector -->
+              <div class="model-section">
+                <div class="section-label">Reasoning model</div>
+                <select class="model-select" id="ed-model" onchange="updateModelInfo()">
+                  <option value="gemini:gemini-1.5-flash" selected>Gemini 1.5 Flash — Fast and efficient for most tasks</option>
+                  <option value="gemini:gemini-1.5-pro">Gemini 1.5 Pro — Best for complex reasoning and long context</option>
+                  <option value="gemini:gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental) — Latest experimental model</option>
+                  <option value="openai:gpt-4o">GPT-4o — OpenAI flagship multimodal model</option>
+                  <option value="openai:gpt-4o-mini">GPT-4o Mini — Affordable and fast OpenAI model</option>
+                  <option value="openai:o1">o1 — Advanced reasoning model</option>
+                  <option value="anthropic:claude-3-5-sonnet-20241022">Claude 3.5 Sonnet — Best for most tasks</option>
+                  <option value="anthropic:claude-3-5-haiku-20241022">Claude 3.5 Haiku — Fast and cost-effective</option>
+                  <option value="xai:grok-beta">Grok Beta — X.AI conversational reasoning</option>
+                </select>
+                <div class="model-info">
+                  <div class="model-info-row">
+                    <span>Provider</span>
+                    <span class="model-info-val" id="mi-provider">GEMINI</span>
+                  </div>
+                  <div class="model-info-row" style="margin-top:5px;">
+                    <span>Model ID</span>
+                    <span class="model-info-val" id="mi-model" style="font-family:monospace;font-size:10.5px;">gemini-1.5-flash</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <button class="btn-delete-agent">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                Remove agent
+              </button>
+            </div>
+          </div>
+
+          <!-- Launch readiness -->
+          <div class="card">
+            <div class="section-label">Launch readiness</div>
+
+            <div class="metrics">
+              <div class="metric-row">
+                <span class="metric-label">Agents configured</span>
+                <span class="metric-val" style="color:#22D3EE;" id="metric-agents">4</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">Flow phases</span>
+                <span class="metric-val" style="color:#22D3EE;">5</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">Est. run cost</span>
+                <span class="metric-val" style="color:#F97316;">$0.20</span>
+              </div>
+            </div>
+
+            <div class="assumption-warn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              3 assumption(s) still need review.
+            </div>
+
+            <button class="btn-launch-full">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Launch debate
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /content -->
+  </main>
+</div>
+
+<script>
+  /* ─── Agent data ─── */
+  const agents = [
+    {
+      name: 'Financial Analyst',
+      role: 'Financial Expert',
+      tone: 'Objective and data-driven',
+      toneKey: 'analytical',
+      purpose: 'To analyze the financial implications of buying a new vs. used car, including total cost of ownership, financing options, and depreciation.',
+      instructions: 'Evaluate the long-term financial impact of both options. Provide detailed cost breakdowns including purchase price, financing interest, insurance premiums, maintenance estimates, and resale value projections. Highlight potential savings and risks associated with each choice.',
+      model: 'gemini:gemini-1.5-flash',
+    },
+    {
+      name: 'Reliability Assessor',
+      role: 'Automotive Expert',
+      tone: 'Informative and cautious',
+      toneKey: 'cautious',
+      purpose: 'To assess the reliability and maintenance needs of new and used cars, considering model history and industry reliability data.',
+      instructions: 'Research and present reliability statistics, common failure points, and warranty coverage for both new and used vehicle options. Consider the impact of age, mileage, and brand reputation on long-term ownership costs.',
+      model: 'gemini:gemini-1.5-flash',
+    },
+    {
+      name: 'Features & Lifestyle Matchmaker',
+      role: 'Consumer Advocate',
+      tone: 'Empathetic and practical',
+      toneKey: 'empathetic',
+      purpose: 'To evaluate the features, technology, and suitability of new and used cars based on the family\'s lifestyle and practical needs.',
+      instructions: 'Assess how each vehicle option aligns with family needs, daily commute requirements, safety standards, and desired technology features. Balance emotional satisfaction with practical considerations.',
+      model: 'gemini:gemini-1.5-flash',
+    },
+    {
+      name: 'Decision Facilitator',
+      role: 'Moderator',
+      tone: 'Neutral and guiding',
+      toneKey: 'balanced',
+      purpose: 'To guide the decision-making process, synthesize information from other agents, and facilitate a structured, unbiased conclusion.',
+      instructions: 'Orchestrate the debate by ensuring all perspectives are heard, identifying areas of consensus and conflict, and guiding the team toward a well-reasoned final recommendation.',
+      model: 'gemini:gemini-1.5-flash',
+    },
+  ];
+
+  const toneColors = {
+    analytical: { bg: 'rgba(34,211,238,0.12)', color: '#22D3EE', border: 'rgba(34,211,238,0.25)' },
+    cautious:   { bg: 'rgba(148,163,184,0.12)', color: '#94A3B8', border: 'rgba(148,163,184,0.25)' },
+    empathetic: { bg: 'rgba(167,139,250,0.12)', color: '#A78BFA', border: 'rgba(167,139,250,0.25)' },
+    balanced:   { bg: 'rgba(99,102,241,0.12)',  color: '#6366F1', border: 'rgba(99,102,241,0.25)' },
+    critical:   { bg: 'rgba(244,63,94,0.12)',   color: '#F43F5E', border: 'rgba(244,63,94,0.25)' },
+    optimistic: { bg: 'rgba(34,197,94,0.12)',   color: '#22C55E', border: 'rgba(34,197,94,0.25)' },
+  };
+
+  let currentAgentIdx = 0;
+
+  function selectAgent(btn, idx) {
+    // Deselect all
+    document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
+    btn.classList.add('selected');
+    currentAgentIdx = idx;
+    loadAgentIntoEditor(agents[idx]);
+  }
+
+  function loadAgentIntoEditor(agent) {
+    document.getElementById('ed-name').value = agent.name;
+    document.getElementById('ed-role').value = agent.role;
+    document.getElementById('ed-purpose').value = agent.purpose;
+    document.getElementById('ed-instructions').value = agent.instructions;
+    document.getElementById('ed-tone').value = agent.tone;
+
+    const sel = document.getElementById('ed-model');
+    for (let opt of sel.options) {
+      if (opt.value === agent.model) { sel.value = agent.model; break; }
+    }
+    updateModelInfo();
+  }
+
+  function updateModelInfo() {
+    const val = document.getElementById('ed-model').value;
+    const [provider, model] = val.split(':');
+    document.getElementById('mi-provider').textContent = provider.toUpperCase();
+    document.getElementById('mi-model').textContent = model;
+  }
+
+  function addAgent() {
+    const newAgent = {
+      name: 'New Agent', role: 'Specialist',
+      tone: 'Balanced', toneKey: 'balanced',
+      purpose: 'Define the perspective this agent represents.',
+      instructions: 'Contribute domain-specific reasoning and challenge weak assumptions.',
+      model: 'gemini:gemini-1.5-flash',
+    };
+    agents.push(newAgent);
+
+    const list = document.getElementById('agent-list');
+    const tc = toneColors.balanced;
+    const btn = document.createElement('button');
+    btn.className = 'agent-card';
+    const newIdx = agents.length - 1;
+    btn.onclick = function() { selectAgent(this, newIdx); };
+    btn.innerHTML = `
+      <div class="agent-card-top">
+        <div>
+          <div class="agent-name">New Agent</div>
+          <div class="agent-role">Specialist</div>
+        </div>
+        <span class="tone-badge" style="background:${tc.bg};color:${tc.color};border:1px solid ${tc.border};">Balanced</span>
+      </div>
+      <div class="agent-purpose">Define the perspective this agent represents.</div>
+    `;
+    list.appendChild(btn);
+    selectAgent(btn, newIdx);
+
+    // Update metric
+    document.getElementById('metric-agents').textContent = agents.length;
+  }
+
+  // Init model info
+  updateModelInfo();
+</script>
+</body>
+</html>

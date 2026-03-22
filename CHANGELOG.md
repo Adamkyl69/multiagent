@@ -1,3 +1,199 @@
+# v3.8.1 - 2026-03-22 17:28
+
+## Summary
+Expert Agents — Extended the Expert Templates feature to support manual agent creation. Users can now create expert agents from scratch in addition to saving them from completed debates. Renamed "Expert Templates" to "Expert Agents" throughout the UI to reflect this dual-source capability.
+
+## Files Modified
+- `backend/app/models.py` — modified
+  - Change: Made created_from_run_id nullable in ExpertTemplate model
+  - Reason: Support manually created agents that aren't tied to a debate run
+- `backend/app/schemas.py` — modified
+  - Change: Added CreateExpertAgentRequest schema; made created_from_run_id nullable in ExpertTemplateResponse
+  - Reason: Validate manual agent creation requests
+- `backend/app/services/expert_templates.py` — modified
+  - Change: Added create_manual_agent method with same quality guardrails as debate-saved agents
+  - Reason: Enable manual expert agent creation with validation
+- `backend/app/main.py` — modified
+  - Change: Added POST /expert-templates/create endpoint
+  - Reason: Expose manual agent creation to frontend
+- `src/release/types.ts` — modified
+  - Change: Made created_from_run_id nullable in ExpertTemplateResponse
+  - Reason: Match backend schema changes
+- `src/release/api.ts` — modified
+  - Change: Added createExpertAgent API function
+  - Reason: Frontend integration for manual agent creation
+- `src/release/ExpertTemplatesView.tsx` — renamed to `src/release/ExpertAgentsView.tsx`
+  - Change: Renamed component from ExpertTemplatesView to ExpertAgentsView
+  - Reason: Better reflects dual-source nature (debate-saved + manually created)
+  - Change: Updated all UI text from "templates" to "agents"
+  - Reason: Clearer terminology for users
+  - Change: Added "Create Agent" button and full creation form with name, role, purpose, instructions, tone, model selector, domain tags, and optional performance note
+  - Reason: Primary UI for manual agent creation
+  - Change: Added handleCreate function with validation and state management
+  - Reason: Handle agent creation flow
+- `src/release/Sidebar.tsx` — modified
+  - Change: Updated navigation label from "EXPERT TEMPLATES" to "EXPERT AGENTS"
+  - Reason: Reflect feature rename
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Updated import and component usage from ExpertTemplatesView to ExpertAgentsView
+  - Reason: Wire renamed component into app
+
+## Changes
+- added: Manual expert agent creation with full form UI
+- added: CreateExpertAgentRequest schema with validation (min lengths, domain validation)
+- added: create_manual_agent service method with quality guardrails
+- added: POST /expert-templates/create API endpoint
+- changed: created_from_run_id now nullable (null for manually created agents)
+- changed: UI terminology from "Expert Templates" to "Expert Agents"
+- changed: Component renamed from ExpertTemplatesView to ExpertAgentsView
+- changed: Sidebar navigation updated to "EXPERT AGENTS"
+- improved: Empty state message now mentions both creation methods
+
+## Impact
+- user-visible impact: Users can now create expert agents manually without completing a debate first
+- user-visible impact: "Create Agent" button prominently displayed in Expert Agents view
+- user-visible impact: Full-featured creation form with all agent properties
+- user-visible impact: Clearer terminology — "Expert Agents" instead of "Expert Templates"
+- technical impact: Database schema change (created_from_run_id nullable) requires migration
+- risks or side effects: Existing templates unaffected; backward compatible
+- breaking changes: None — additive feature
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test manual agent creation flow, form validation, and integration with existing debate-saved agents
+
+## Follow-up
+- remaining work
+  - Run Alembic migration to alter created_from_run_id column to nullable
+  - Test that manually created agents work correctly in debates
+- technical debt
+  - Consider adding agent preview/test functionality before saving
+
+# v3.8.0 - 2026-03-22 16:29
+
+## Summary
+Expert Agent Templates — a full-stack feature that lets users save their best-performing debate agents as reusable expert templates. Templates are quality-gated (only from completed debates), domain-tagged, and performance-tracked. Users can browse their template library, add proven experts to new projects, and manage templates through a dedicated view.
+
+## Files Modified
+- `backend/app/models.py` — modified
+  - Change: Added ExpertTemplate and TemplateUsage SQLAlchemy models
+  - Reason: Persist expert agent templates and track per-run usage/ratings
+- `backend/app/schemas.py` — modified
+  - Change: Added SaveAgentAsTemplateRequest, UpdateExpertTemplateRequest, RateTemplateRequest, ExpertTemplateResponse, ExpertTemplateListResponse schemas and VALID_DECISION_DOMAINS constant
+  - Reason: Validate API input/output for template operations
+- `backend/app/services/expert_templates.py` — added
+  - Change: New ExpertTemplateService with CRUD, validation, quality guardrails (max 15 templates, completed-run-only, domain validation, instruction quality check), usage tracking, and rating logic
+  - Reason: Core business logic for expert templates
+- `backend/app/main.py` — modified
+  - Change: Added 7 API endpoints for expert template operations (save, list, get, update, delete, rate, suggest by domain)
+  - Reason: Expose template management to frontend
+- `backend/app/services/conversation_v2.py` — modified
+  - Change: Added _get_matching_templates method; integrated template suggestions into _process_frame_confirmation during agent generation
+  - Reason: Suggest proven experts when generating agents for matching decision domains
+- `src/release/types.ts` — modified
+  - Change: Added ExpertTemplateResponse and ExpertTemplateListResponse TypeScript interfaces
+  - Reason: Type-safe frontend data layer
+- `src/release/api.ts` — modified
+  - Change: Added 7 API functions (saveAgentAsTemplate, listExpertTemplates, getExpertTemplate, updateExpertTemplate, deleteExpertTemplate, rateExpertTemplate, suggestExpertTemplates)
+  - Reason: Frontend API integration for all template operations
+- `src/release/RunScreen.tsx` — modified
+  - Change: Added post-debate "Save Expert Perspectives" panel with agent selection, domain tagging, performance note, and save-as-template flow
+  - Reason: Primary entry point for creating templates from completed debates
+- `src/release/ProjectReviewScreen.tsx` — modified
+  - Change: Added "Library" button to agents section with inline template browser showing name, role, helpful rate, usage count, and domain tags; click-to-add templates as project agents
+  - Reason: Let users leverage saved experts when setting up new debates
+- `src/release/ExpertTemplatesView.tsx` — added
+  - Change: Full expert templates manager with list/detail layout, domain filtering, inline editing, delete with confirmation, usage stats display
+  - Reason: Dedicated view for browsing and managing template library
+- `src/release/Sidebar.tsx` — modified
+  - Change: Added 'templates' to NavView type; moved TEMPLATES from static items to nav items as "EXPERT TEMPLATES"
+  - Reason: Make templates accessible from sidebar navigation
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Imported ExpertTemplatesView; render it when activeView is 'templates'
+  - Reason: Wire templates view into app routing
+
+## Changes
+- added: ExpertTemplate and TemplateUsage database models with quality metadata fields
+- added: Quality guardrails — max 15 templates per workspace, completed-run-only, 1-3 validated decision domains, min 10-char performance notes, instruction length checks
+- added: 7 REST API endpoints for full template lifecycle
+- added: Template suggestions during conversation agent generation based on decision domain
+- added: Post-debate agent evaluation panel in RunScreen
+- added: Template library browser in ProjectReviewScreen agents section
+- added: Dedicated ExpertTemplatesView with list/detail, filtering, editing, deletion
+- added: "Expert Templates" navigation item in sidebar
+- added: Performance tracking with helpful_rate, times_used, total_ratings
+
+## Impact
+- user-visible impact: Users can save best agents from completed debates as reusable templates
+- user-visible impact: Templates appear as suggestions when building new projects
+- user-visible impact: Dedicated templates manager accessible from sidebar
+- user-visible impact: Domain-based filtering and performance stats help identify best templates
+- technical impact: New database tables (expert_templates, template_usages) require migration
+- technical impact: New service layer (ExpertTemplateService) with quality enforcement
+- risks or side effects: Database migration needed before first use
+- breaking changes: None — additive feature
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test full save/browse/add/edit/delete template flow
+
+## Follow-up
+- remaining work
+  - Run Alembic migration for new tables
+  - Add template rating prompt after debates that used templates
+- technical debt
+  - Consider caching template suggestions during conversation flow
+
+# v3.7.5 - 2026-03-22 14:21
+
+## Summary
+Improved typing animation behavior to stop immediately when user clicks in the textarea, not just when they start typing. This provides a more responsive and intuitive user experience.
+
+## Files Modified
+- `src/release/ChatInterface.tsx` — modified
+  - Change: Added setIsTypingAnimation(false) to onFocus handler in initial view textarea
+  - Reason: Stop animation immediately when user clicks in input field
+  - Change: Added setIsTypingAnimation(false) to onFocus handler in active chat textarea
+  - Reason: Ensure consistent behavior across both input instances
+  - Change: Animation now stops on focus event, not just onChange
+  - Reason: More responsive UX - stops as soon as user clicks, before typing
+  - Change: Both textarea instances (initial and active chat) have same focus behavior
+  - Reason: Consistent user experience across all views
+
+## Changes
+- improved: Typing animation stops immediately on textarea focus/click
+- improved: More responsive user interaction - no delay waiting for first keystroke
+- improved: Consistent behavior across initial and active chat views
+- changed: Animation cessation trigger from onChange to onFocus
+
+## Impact
+- user-visible impact: Animation stops as soon as user clicks in textarea
+- user-visible impact: More immediate response to user interaction
+- user-visible impact: Better UX - no need to type to stop animation
+- technical impact: Added setIsTypingAnimation(false) to onFocus handlers
+- risks or side effects: None - improves responsiveness
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — test animation stops on click/focus
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
+
+---
+
 # v3.7.4 - 2026-03-22 14:04
 
 ## Summary

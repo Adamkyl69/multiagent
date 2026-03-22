@@ -41,7 +41,7 @@ export interface RecentSession {
   status: 'debating' | 'framed' | 'ready' | 'completed' | 'running' | 'failed';
 }
 
-export type NavView = 'dashboard' | 'in-progress' | 'completed' | 'starred';
+export type NavView = 'dashboard' | 'in-progress' | 'completed' | 'starred' | 'templates';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -82,11 +82,11 @@ const NAV_ITEMS: { id: NavView; label: string; Icon: React.ElementType }[] = [
   { id: 'in-progress', label: 'IN PROGRESS', Icon: Clock },
   { id: 'completed', label: 'COMPLETED', Icon: CheckCircle },
   { id: 'starred', label: 'STARRED', Icon: Star },
+  { id: 'templates', label: 'EXPERT AGENTS', Icon: FileText },
 ];
 
 const STATIC_ITEMS: { label: string; Icon: React.ElementType }[] = [
   { label: 'SEARCH', Icon: Search },
-  { label: 'TEMPLATES', Icon: FileText },
   { label: 'REPORTS', Icon: BarChart2 },
 ];
 
