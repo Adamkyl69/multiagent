@@ -1,3 +1,147 @@
+# v3.5.1 - 2026-03-22 12:40
+
+## Summary
+Added animated agent constellation visualization to landing page hero section. The visualization features 4 AI agent cards (Claude, Gemini, GPT-4, Grok) connected to a central Decision Hub with animated SVG connection lines and rotating hub rings, matching the design from landingpage.html sample.
+
+## Files Modified
+- `src/release/LandingPage.tsx` — modified
+  - Change: Added agent constellation section with 4 agent cards in left/right columns
+  - Reason: Provide visual demonstration of multi-agent system architecture
+  - Change: Created Claude and Gemini agent cards on left with brand colors and icons
+  - Reason: Show analytical and strategic agent roles
+  - Change: Created GPT-4 and Grok agent cards on right with brand colors and icons
+  - Reason: Show critic and facilitator agent roles
+  - Change: Added central Decision Hub with rotating rings and gradient core
+  - Reason: Visualize the central coordination point for agent debates
+  - Change: Implemented SVG animated connection lines with gradient strokes
+  - Reason: Show data flow between agents and hub with smooth animations
+  - Change: Added animateMotion for colored dots traveling along connection paths
+  - Reason: Create engaging visual of active communication between agents
+  - Change: Added CSS keyframe animations for hub rotation and status blinking
+  - Reason: Bring the visualization to life with smooth continuous animations
+  - Change: Used brand-specific colors for each AI model (Claude orange, Gemini blue, GPT-4 green, Grok purple)
+  - Reason: Match official brand colors for authenticity
+  - Change: Added "Ready" status indicators with blinking cyan dots
+  - Reason: Show agents are active and available
+
+## Changes
+- added: Agent constellation visualization with 4 AI model cards
+- added: Central Decision Hub with rotating outer and mid rings
+- added: SVG animated connection lines with gradient colors
+- added: Animated dots traveling along connection paths (2.2s-2.8s durations)
+- added: Hub ring rotation animations (8s outer, 5s mid reverse)
+- added: Blinking status dots on agent cards
+- added: Brand-accurate AI model icons (Claude, Gemini, GPT-4, Grok)
+- added: Glass-morphism styling on agent cards
+- improved: Visual storytelling of multi-agent debate system
+- improved: Landing page engagement with animated elements
+
+## Impact
+- user-visible impact: Engaging animated visualization of platform architecture
+- user-visible impact: Clear demonstration of multi-agent collaboration
+- user-visible impact: Professional presentation matching modern SaaS standards
+- technical impact: SVG animations with SMIL animateMotion
+- risks or side effects: None - purely visual enhancement
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — refresh landing page to see constellation
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - Constellation may need responsive adjustments for mobile screens
+
+---
+
+# v3.5.0 - 2026-03-22 09:17
+
+## Summary
+Created a comprehensive marketing landing page for non-authenticated users, cloning the design from landingpage.html sample. The new landing page features hero section, features showcase, pricing tiers, and modern dark-themed UI with glass-morphism effects. Non-authenticated users now see a full marketing experience instead of going directly to the auth screen.
+
+## Files Modified
+- `src/release/LandingPage.tsx` — created
+  - Change: Created new landing page component with hero section, features, pricing, and CTA
+  - Reason: Provide marketing experience for first-time visitors and non-authenticated users
+  - Change: Implemented dark theme with background orbs and dot grid pattern
+  - Reason: Match modern design aesthetic from sample
+  - Change: Added navigation bar with Sign in and Get started buttons
+  - Reason: Easy access to authentication from landing page
+  - Change: Created hero section with gradient heading and proof points
+  - Reason: Compelling value proposition for new visitors
+  - Change: Added stats strip showing 4 AI models, infinite rounds, consensus output
+  - Reason: Highlight key platform capabilities
+  - Change: Implemented "How it works" section with 3-step process
+  - Reason: Educate users on platform workflow
+  - Change: Added features section highlighting multi-model debates, real-time streaming
+  - Reason: Showcase platform differentiators
+  - Change: Created pricing section with Free, Pro, and Enterprise tiers
+  - Reason: Clear pricing transparency with monthly/annual toggle
+  - Change: Added final CTA section and footer
+  - Reason: Multiple conversion opportunities throughout page
+  - Change: Used inline styles with glass-morphism effects and responsive design
+  - Reason: Consistent with project styling approach
+
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Added import for LandingPage component
+  - Reason: Use new landing page for non-authenticated users
+  - Change: Added showAuthScreen state to toggle between landing and auth
+  - Reason: Allow users to navigate from landing page to sign-in
+  - Change: Updated non-authenticated user flow to show LandingPage first
+  - Reason: Marketing experience before authentication
+  - Change: Pass onSignIn and onGetStarted callbacks to LandingPage
+  - Reason: Enable navigation to AuthScreen when user clicks sign-in or get-started
+
+## Changes
+- added: New LandingPage.tsx component with full marketing page
+- added: Hero section with gradient heading and animated badge
+- added: Background orbs (indigo, orange, cyan) with blur effects
+- added: Dot grid background pattern
+- added: Navigation bar with branding and auth buttons
+- added: Stats strip showing platform capabilities
+- added: Logos bar for AI model providers
+- added: How it works section with 3-step process
+- added: Features section with 4 key features
+- added: Pricing section with 3 tiers and annual/monthly toggle
+- added: Final CTA section with gradient background
+- added: Footer with branding and links
+- changed: Non-authenticated user flow now shows landing page first
+- changed: AuthScreen now accessible via Sign in button on landing page
+- improved: First-time visitor experience with marketing content
+- improved: Conversion funnel with multiple CTAs
+
+## Impact
+- user-visible impact: Non-authenticated users see professional marketing page
+- user-visible impact: Clear value proposition and feature showcase
+- user-visible impact: Transparent pricing information
+- user-visible impact: Multiple paths to sign up or sign in
+- technical impact: Separation of marketing and authentication concerns
+- risks or side effects: None - purely additive feature
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — refresh frontend to see new landing page
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - Consider adding Space Grotesk font import to index.html if not already present
+  - Consider extracting common styles to shared theme file
+- limitations
+  - None
+
+---
+
 # v3.4.0 - 2026-03-21 19:52
 
 ## Summary

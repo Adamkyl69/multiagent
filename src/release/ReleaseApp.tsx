@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import AuthScreen from './AuthScreen';
+import LandingPage from './LandingPage';
 import ChatInterface from './ChatInterface';
 import ProjectReviewScreen from './ProjectReviewScreen';
 import RunScreen from './RunScreen';
@@ -23,10 +24,12 @@ export default function ReleaseApp() {
   const [activeView, setActiveView] = useState<NavView>('dashboard');
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [resumeSessionId, setResumeSessionId] = useState<string | null>(null);
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
-      setSession({ access_token: 'dev-token', user: { id: 'dev-user', email: 'dev@example.com' } } as any);
+      // In dev mode without supabase, start as logged out to test landing page
+      setSession(null);
       setLoading(false);
       return;
     }
@@ -149,7 +152,21 @@ export default function ReleaseApp() {
   }
 
   if (!token || !session) {
-    return <AuthScreen />;
+    if (showAuthScreen) {
+      return (
+        <AuthScreen
+          onDevLogin={() => {
+            setSession({ access_token: 'dev-token', user: { id: 'dev-user', email: 'dev@example.com' } } as any);
+          }}
+        />
+      );
+    }
+    return (
+      <LandingPage
+        onSignIn={() => setShowAuthScreen(true)}
+        onGetStarted={() => setShowAuthScreen(true)}
+      />
+    );
   }
 
   return (

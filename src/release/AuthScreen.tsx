@@ -4,7 +4,7 @@ import { Loader2, Lock, Mail, UserPlus } from 'lucide-react';
 import { IS_SUPABASE_CONFIGURED } from '../lib/env';
 import { supabase } from '../lib/supabase';
 
-export default function AuthScreen() {
+export default function AuthScreen({ onDevLogin }: { onDevLogin?: () => void }) {
   const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,8 +54,17 @@ export default function AuthScreen() {
         </div>
 
         {!IS_SUPABASE_CONFIGURED && (
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Frontend auth configuration is missing. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 space-y-3">
+            <div>Frontend auth configuration is missing. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.</div>
+            {onDevLogin && (
+              <button
+                type="button"
+                onClick={onDevLogin}
+                className="w-full rounded-xl bg-amber-600/20 border border-amber-500/50 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-600/30 transition-colors"
+              >
+                Continue as Developer (Mock Session)
+              </button>
+            )}
           </div>
         )}
 
