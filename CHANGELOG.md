@@ -1,3 +1,75 @@
+# v3.4.0 - 2026-03-21 19:52
+
+## Summary
+Redesigned the Launch debate page (ProjectReviewScreen) with modern dark-themed UI matching the sample design. Implemented glass-morphism effects, gradient backgrounds, improved typography with Space Grotesk font, and fully responsive layout with comprehensive mobile breakpoints.
+
+## Files Modified
+- `src/release/ProjectReviewScreen.tsx` — modified
+  - Change: Replaced entire component layout with modern dark design (#06080F background)
+  - Reason: User requested design update to match sample page with modern dark aesthetic
+  - Change: Added animated background orbs (indigo, orange, cyan) with blur effects
+  - Reason: Create depth and visual interest with subtle gradient glows
+  - Change: Added dot grid background pattern
+  - Reason: Add texture and modern design element matching sample
+  - Change: Implemented glass-morphism panels with backdrop-filter blur
+  - Reason: Create floating, layered UI elements with depth
+  - Change: Updated header with gradient text using Space Grotesk font
+  - Reason: Modern typography with visual hierarchy
+  - Change: Added comprehensive responsive breakpoints (sm, lg, xl)
+  - Reason: Ensure fully responsive design across mobile, tablet, and desktop
+  - Change: Updated all inputs/textareas with focus states (indigo border glow)
+  - Reason: Better visual feedback for interactive elements
+  - Change: Changed "Launch debate" button to orange gradient with glow shadow
+  - Reason: Primary CTA stands out with brand accent color
+  - Change: Updated agent cards with hover scale animations
+  - Reason: Subtle micro-interactions improve UX
+  - Change: Redesigned flow phase cards with numbered badges
+  - Reason: Clear visual hierarchy and step indication
+  - Change: Updated Launch Readiness panel with warning emoji for assumptions
+  - Reason: Better visual communication of important information
+
+## Changes
+- changed: Complete visual redesign of ProjectReviewScreen component
+- added: Animated background orbs with gradient blur effects
+- added: Dot grid background pattern
+- added: Glass-morphism panels with backdrop-filter blur
+- added: Gradient text headers with Space Grotesk font
+- added: Comprehensive responsive design (mobile-first approach)
+- added: Focus states with indigo border glow on all inputs
+- added: Hover animations on interactive elements
+- improved: Typography hierarchy with better font sizes and spacing
+- improved: Color scheme using modern dark palette (#06080F, #0B0E1A, #6366F1, #F97316)
+- improved: Button styling with gradients and shadow effects
+- improved: Agent card design with better information density
+- improved: Mobile responsiveness with proper text scaling and padding
+
+## Impact
+- user-visible impact: Modern, professional dark-themed interface
+- user-visible impact: Better visual hierarchy and readability
+- user-visible impact: Smooth animations and micro-interactions
+- user-visible impact: Fully responsive across all device sizes
+- user-visible impact: Improved focus states for better accessibility
+- technical impact: Inline styles for precise color control and effects
+- risks or side effects: None - purely visual update, no functional changes
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: Not run
+- build: Not run
+- manual verification: Pending — refresh frontend to see new design
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - Consider extracting color variables to a theme configuration
+  - Consider adding Space Grotesk font import to index.html if not already present
+- limitations
+  - None
+
+---
+
 # v3.0.2 - 2026-03-21 08:55
 
 ## Summary
@@ -181,6 +253,50 @@ Major UX flow redesign. Simplified entry point, automatic decision classificatio
 - limitations
   - Classification depends on LLM accuracy
   - Clarifying questions may not cover all edge cases
+
+---
+
+# v3.3.10 - 2026-03-21 15:54
+
+## Summary
+Updated three-dot menu to use horizontal dots (⋯) instead of vertical dots (⋮) and made the buttons only visible when hovering over list items. Added smooth fade in/out animation for a cleaner, more minimalistic interface.
+
+## Files Modified
+- `src/release/Sidebar.tsx` — modified
+  - Change: Replaced MoreVertical icon with MoreHorizontal icon
+  - Change: Added className="three-dot-button" to identify menu buttons
+  - Change: Set opacity: 0 by default for three-dot buttons (hidden)
+  - Change: Added transition: 'opacity 0.12s' for smooth animations
+  - Change: Updated onMouseEnter to show button: button.style.opacity = '1'
+  - Change: Updated onMouseLeave to hide button: button.style.opacity = '0'
+  - Reason: User requested horizontal dots and hover-only visibility for cleaner interface
+
+## Changes
+- changed: Three-dot menu now uses horizontal dots (⋯) instead of vertical dots (⋮)
+- changed: Three-dot buttons are hidden by default and only appear on hover
+- improved: Smooth fade in/out animation when entering/leaving hover state
+- improved: Cleaner, more minimalistic interface with less visual clutter
+
+## Impact
+- user-visible impact: Three-dot buttons only appear when hovering over session items
+- user-visible impact: Horizontal dots provide better visual balance
+- technical impact: Reduced visual noise in sidebar interface
+- risks or side effects: None
+- breaking changes: None
+
+## Validation
+- tests: Not run
+- lint: No errors
+- build: Not run
+- manual verification: Pending — refresh frontend to see horizontal dots and hover behavior
+
+## Follow-up
+- remaining work
+  - None
+- technical debt
+  - None
+- limitations
+  - None
 
 ---
 
