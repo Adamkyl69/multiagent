@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, ArrowUp, Sparkles, MessageSquare } from 'lucide-react';
+import { Mic, MicOff, ArrowUp, Sparkles, MessageSquare, Wrench } from 'lucide-react';
 import InlineDecisionWizard from './InlineDecisionWizard';
 import InlineDecisionResults from './InlineDecisionResults';
 import {
@@ -60,13 +60,26 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
   const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
   const [decisionMode, setDecisionMode] = useState<'exploration' | 'structured' | null>(null);
   const [rankingResult, setRankingResult] = useState<RankingResult | null>(null);
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Close tools menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(event.target as Node)) {
+        setShowToolsMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -530,72 +543,6 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
               </div>
             ))}
 
-            {/* Mode selection after frame */}
-            {context?.stage === 'ready' && !decisionMode && !generating && (
-              <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 20px', width: '100%' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#F1F5F9', marginBottom: 12 }}>Choose your approach</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <button
-                      onClick={() => setDecisionMode('exploration')}
-                      style={{
-                        padding: '14px 16px',
-                        borderRadius: 10,
-                        border: '1px solid rgba(139,92,246,0.3)',
-                        background: 'rgba(139,92,246,0.08)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 180ms',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(139,92,246,0.15)';
-                        e.currentTarget.style.borderColor = 'rgba(139,92,246,0.5)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(139,92,246,0.08)';
-                        e.currentTarget.style.borderColor = 'rgba(139,92,246,0.3)';
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <MessageSquare style={{ width: 16, height: 16, color: '#A78BFA' }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#C4B5FD' }}>Explore Perspectives</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.5 }}>
-                        Multi-agent debate to surface insights and tradeoffs
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setDecisionMode('structured')}
-                      style={{
-                        padding: '14px 16px',
-                        borderRadius: 10,
-                        border: '1px solid rgba(99,102,241,0.3)',
-                        background: 'rgba(99,102,241,0.08)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 180ms',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(99,102,241,0.15)';
-                        e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(99,102,241,0.08)';
-                        e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <Sparkles style={{ width: 16, height: 16, color: '#A5B4FC' }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#C7D2FE' }}>Get Structured Ranking</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.5 }}>
-                        Weighted evaluation with deterministic scoring
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Inline MAGDM wizard */}
             {decisionMode === 'structured' && !rankingResult && context?.decision_frame && (
@@ -650,6 +597,143 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
             {/* Input bar at bottom for active chat */}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 24px', background: 'rgba(11,14,26,0.8)', backdropFilter: 'blur(12px)' }}>
               <div style={{ display: 'flex', gap: 12, maxWidth: 720, margin: '0 auto', alignItems: 'flex-end' }}>
+                {/* Tools button */}
+                <div style={{ position: 'relative' }} ref={toolsMenuRef}>
+                  <button
+                    onClick={() => setShowToolsMenu(!showToolsMenu)}
+                    disabled={loading || generating}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '10px 14px',
+                      background: showToolsMenu ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${showToolsMenu ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                      borderRadius: 10,
+                      color: showToolsMenu ? '#A5B4FC' : '#64748B',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: loading || generating ? 'not-allowed' : 'pointer',
+                      transition: 'all 180ms',
+                      fontFamily: 'DM Sans, system-ui, sans-serif',
+                    }}
+                    onMouseEnter={e => {
+                      if (!loading && !generating && !showToolsMenu) {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!showToolsMenu) {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                      }
+                    }}
+                  >
+                    <Wrench style={{ width: 16, height: 16 }} />
+                    <span>Tools</span>
+                  </button>
+
+                  {/* Tools dropdown menu */}
+                  {showToolsMenu && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      marginBottom: 8,
+                      background: 'rgba(17,24,39,0.95)',
+                      backdropFilter: 'blur(16px)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 12,
+                      padding: '8px',
+                      minWidth: 280,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                      zIndex: 1000,
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#475569', padding: '8px 12px', marginBottom: 4 }}>Decision Mode</div>
+                      <button
+                        onClick={() => {
+                          setDecisionMode('exploration');
+                          setRankingResult(null);
+                          setShowToolsMenu(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '10px 12px',
+                          background: decisionMode === 'exploration' ? 'rgba(139,92,246,0.15)' : 'transparent',
+                          border: 'none',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          transition: 'all 150ms',
+                          marginBottom: 4,
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = decisionMode === 'exploration' ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = decisionMode === 'exploration' ? 'rgba(139,92,246,0.15)' : 'transparent';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <MessageSquare style={{ width: 16, height: 16, color: decisionMode === 'exploration' ? '#A78BFA' : '#64748B' }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: decisionMode === 'exploration' ? '#C4B5FD' : '#F1F5F9', marginBottom: 2 }}>Exploratory Mode</div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>Multi-agent debate to surface insights</div>
+                          </div>
+                          {decisionMode === 'exploration' && (
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#A78BFA' }} />
+                          )}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (context?.decision_frame) {
+                            setDecisionMode('structured');
+                            setRankingResult(null);
+                            setShowToolsMenu(false);
+                          }
+                        }}
+                        disabled={!context?.decision_frame}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '10px 12px',
+                          background: decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                          border: 'none',
+                          borderRadius: 8,
+                          cursor: context?.decision_frame ? 'pointer' : 'not-allowed',
+                          opacity: context?.decision_frame ? 1 : 0.5,
+                          transition: 'all 150ms',
+                        }}
+                        onMouseEnter={e => {
+                          if (context?.decision_frame) {
+                            e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <Sparkles style={{ width: 16, height: 16, color: decisionMode === 'structured' ? '#A5B4FC' : '#64748B' }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: decisionMode === 'structured' ? '#C7D2FE' : '#F1F5F9', marginBottom: 2 }}>MAGDM Decision Mode</div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>Structured ranking with weighted scoring</div>
+                          </div>
+                          {decisionMode === 'structured' && (
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#A5B4FC' }} />
+                          )}
+                        </div>
+                      </button>
+                      {!context?.decision_frame && (
+                        <div style={{ fontSize: 10, color: '#64748B', padding: '8px 12px', lineHeight: 1.4 }}>
+                          Complete the decision framing first to enable MAGDM mode
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div style={{ flex: 1, position: 'relative' }}>
                   <textarea
                     value={input}
@@ -667,6 +751,7 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                       border: '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 12,
                       padding: '13px 18px',
+                      paddingLeft: '18px',
                       paddingRight: speechSupported ? '80px' : '50px',
                       fontSize: 14.5,
                       color: '#F1F5F9',
