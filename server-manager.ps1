@@ -65,8 +65,14 @@ function Stop-Ports([int[]]$ports) {
             Select-Object -ExpandProperty OwningProcess -Unique
         foreach ($processId in $connections) {
             if ($processId -and $processId -gt 0) {
-                taskkill /F /PID $processId /T 2>$null | Out-Null
-                $killed.Add("Port $port -> PID $processId")
+                # Check if process actually exists before trying to kill
+                $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+                if ($process) {
+                    taskkill /F /PID $processId /T 2>$null | Out-Null
+                    $killed.Add("Port $port -> PID $processId")
+                } else {
+                    $killed.Add("Port $port -> PID $processId (zombie, skipped)")
+                }
             }
         }
     }
@@ -197,7 +203,7 @@ $btnKillPorts.Add_Click({
     $global:frontendJob = $null
 
     # Wait for processes to fully terminate
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 3
     
     # Force-kill any remaining processes on critical ports
     foreach ($port in @(3000, 8000)) {
@@ -205,11 +211,20 @@ $btnKillPorts.Add_Click({
             Select-Object -ExpandProperty OwningProcess -Unique
         foreach ($pid in $remaining) {
             if ($pid -and $pid -gt 0) {
-                taskkill /F /PID $pid /T 2>$null | Out-Null
-                $killed.Add("Port $port -> PID $pid (retry)")
+                # Check if process actually exists (not a zombie)
+                $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                if ($process) {
+                    taskkill /F /PID $pid /T 2>$null | Out-Null
+                    $killed.Add("Port $port -> PID $pid (retry)")
+                } else {
+                    $killed.Add("Port $port -> PID $pid (zombie, waiting for cleanup)")
+                }
             }
         }
     }
+    
+    # Additional wait for zombie cleanup
+    Start-Sleep -Seconds 1
 
     $lblBackend.Text = "Backend: STOPPED"
     $lblBackend.ForeColor = [System.Drawing.Color]::Red
