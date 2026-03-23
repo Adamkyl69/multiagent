@@ -141,3 +141,119 @@ export interface ExpertTemplateListResponse {
   count: number;
   limit: number;
 }
+
+// ---------------------------------------------------------------------------
+// MAGDM Decision Engine types
+// ---------------------------------------------------------------------------
+
+export interface DecisionSessionResponse {
+  id: string;
+  workspace_id: string;
+  title: string;
+  problem_statement: string;
+  domain: string;
+  mode: 'exploration' | 'structured_decision';
+  status: 'draft' | 'structuring' | 'evaluating' | 'ranked' | 'archived';
+  aggregation_method: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DecisionAlternative {
+  id: string;
+  session_id: string;
+  label: string;
+  description: string;
+  status: 'active' | 'removed';
+  position: number;
+}
+
+export interface DecisionCriterion {
+  id: string;
+  session_id: string;
+  name: string;
+  description: string;
+  direction: 'benefit' | 'cost';
+  weight: number;
+  weight_normalized: number;
+  position: number;
+}
+
+export interface DecisionExpert {
+  id: string;
+  session_id: string;
+  name: string;
+  role: string;
+  description: string;
+  expert_type: 'system' | 'user_saved' | 'human';
+  weight_normalized: number;
+  status: 'active' | 'removed';
+  position: number;
+}
+
+export interface DecisionEvaluation {
+  id: string;
+  session_id: string;
+  expert_id: string;
+  alternative_id: string;
+  criterion_id: string;
+  raw_score: number;
+  normalized_score: number;
+  confidence: 'low' | 'medium' | 'high';
+  justification: string;
+  source: 'ai' | 'human';
+}
+
+export interface AlternativeScoreDetail {
+  alternative_id: string;
+  alternative_label: string;
+  group_score: number;
+  rank: number;
+  expert_scores: Record<string, number>;
+  criterion_contributions: Record<string, number>;
+  is_provisional: boolean;
+}
+
+export interface CriterionDisagreement {
+  criterion_id: string;
+  criterion_name: string;
+  stddev: number;
+  contested: boolean;
+}
+
+export interface AlternativeDisagreement {
+  alternative_id: string;
+  alternative_label: string;
+  mean_disagreement: number;
+  contested_criteria: string[];
+}
+
+export interface SensitivityItem {
+  criterion_id: string;
+  criterion_name: string;
+  weight_normalized: number;
+  impact_rank: number;
+}
+
+export interface RankingResult {
+  session_id: string;
+  is_complete: boolean;
+  completion_errors: string[];
+  ranked_alternatives: AlternativeScoreDetail[];
+  criterion_disagreements: CriterionDisagreement[];
+  alternative_disagreements: AlternativeDisagreement[];
+  sensitivity: SensitivityItem[];
+  is_provisional: boolean;
+  provisional_reasons: string[];
+  explanation: string;
+  computed_at: string;
+}
+
+export interface DecisionSessionDetail {
+  session: DecisionSessionResponse;
+  alternatives: DecisionAlternative[];
+  criteria: DecisionCriterion[];
+  experts: DecisionExpert[];
+  evaluations: DecisionEvaluation[];
+  ranking: RankingResult | null;
+}

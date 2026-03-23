@@ -33,6 +33,19 @@ from app.schemas import (
     UsageEventResponse,
     UsageOverviewResponse,
 )
+from app.schemas_decision import (
+    CreateDecisionSessionRequest,
+    DecisionSessionDetail,
+    DecisionSessionResponse,
+    RankingResult,
+    SuggestAlternativesRequest,
+    SuggestCriteriaRequest,
+    SuggestExpertsRequest,
+    UpdateAlternativesRequest,
+    UpdateCriteriaRequest,
+    UpdateDecisionSessionRequest,
+    UpdateExpertsRequest,
+)
 from app.schemas_conversation import (
     ConversationHistoryResponse,
     ConversationResponse,
@@ -45,6 +58,7 @@ from app.services.identity import IdentityService
 from app.services.intake import IntakeService
 from app.services.llm import LLMService
 from app.services.projects import ProjectService
+from app.services.decision import DecisionService
 from app.services.expert_templates import ExpertTemplateService
 from app.services.runs import RunEventBroker, RunService
 
@@ -55,6 +69,7 @@ intake_service = IntakeService()
 llm_service = LLMService()
 project_service = ProjectService(intake_service=intake_service, billing_service=billing_service, llm_service=llm_service)
 conversation_service = ConversationServiceV2(llm_service=llm_service, project_service=project_service)
+decision_service = DecisionService(llm_service=llm_service)
 expert_template_service = ExpertTemplateService()
 run_broker = RunEventBroker()
 run_service = RunService(session_factory=async_session_factory, billing_service=billing_service, broker=run_broker, llm_service=llm_service)
@@ -532,6 +547,140 @@ async def create_checkout_session(
         user_email=context["user"].email,
         price_id=payload.price_id,
     )
+
+
+# ---------------------------------------------------------------------------
+# MAGDM Decision Engine endpoints
+# ---------------------------------------------------------------------------
+
+@app.post(f"{settings.api_v1_prefix}/decisions", response_model=DecisionSessionResponse)
+async def create_decision_session(
+    payload: CreateDecisionSessionRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.create_session(
+        session, workspace_id=context["workspace"].id, user_id=context["user"].id, req=payload
+    )
+
+
+@app.get(f"{settings.api_v1_prefix}/decisions", response_model=list[DecisionSessionResponse])
+async def list_decision_sessions(
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.list_sessions(session, workspace_id=context["workspace"].id)
+
+
+@app.get(f"{settings.api_v1_prefix}/decisions/{{session_id}}", response_model=DecisionSessionDetail)
+async def get_decision_session(
+    session_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.get_session_detail(session, workspace_id=context["workspace"].id, session_id=session_id)
+
+
+@app.patch(f"{settings.api_v1_prefix}/decisions/{{session_id}}", response_model=DecisionSessionResponse)
+async def update_decision_session(
+    session_id: str,
+    payload: UpdateDecisionSessionRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.update_session(
+        session, workspace_id=context["workspace"].id, session_id=session_id, req=payload
+    )
+
+
+@app.delete(f"{settings.api_v1_prefix}/decisions/{{session_id}}")
+async def delete_decision_session(
+    session_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    await decision_service.delete_session(session, workspace_id=context["workspace"].id, session_id=session_id)
+    return Response(status_code=204)
+
+
+@app.put(f"{settings.api_v1_prefix}/decisions/{{session_id}}/alternatives")
+async def update_decision_alternatives(
+    session_id: str,
+    payload: UpdateAlternativesRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.update_alternatives(
+        session, workspace_id=context["workspace"].id, session_id=session_id, req=payload
+    )
+
+
+@app.put(f"{settings.api_v1_prefix}/decisions/{{session_id}}/criteria")
+async def update_decision_criteria(
+    session_id: str,
+    payload: UpdateCriteriaRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.update_criteria(
+        session, workspace_id=context["workspace"].id, session_id=session_id, req=payload
+    )
+
+
+@app.put(f"{settings.api_v1_prefix}/decisions/{{session_id}}/experts")
+async def update_decision_experts(
+    session_id: str,
+    payload: UpdateExpertsRequest,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.update_experts(
+        session, workspace_id=context["workspace"].id, session_id=session_id, req=payload
+    )
+
+
+@app.post(f"{settings.api_v1_prefix}/decisions/{{session_id}}/evaluate", response_model=RankingResult)
+async def run_decision_evaluation(
+    session_id: str,
+    context=Depends(require_workspace),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await decision_service.run_evaluation(
+        session, workspace_id=context["workspace"].id, session_id=session_id
+    )
+
+
+@app.post(f"{settings.api_v1_prefix}/decisions/suggest/alternatives")
+async def suggest_decision_alternatives(
+    payload: SuggestAlternativesRequest,
+    context=Depends(require_workspace),
+):
+    results = await decision_service.suggest_alternatives(
+        payload.problem_statement, payload.domain, payload.existing_alternatives
+    )
+    return {"alternatives": results}
+
+
+@app.post(f"{settings.api_v1_prefix}/decisions/suggest/criteria")
+async def suggest_decision_criteria(
+    payload: SuggestCriteriaRequest,
+    context=Depends(require_workspace),
+):
+    results = await decision_service.suggest_criteria(
+        payload.problem_statement, payload.domain, payload.alternatives, payload.existing_criteria
+    )
+    return {"criteria": results}
+
+
+@app.post(f"{settings.api_v1_prefix}/decisions/suggest/experts")
+async def suggest_decision_experts(
+    payload: SuggestExpertsRequest,
+    context=Depends(require_workspace),
+):
+    results = await decision_service.suggest_experts(
+        payload.problem_statement, payload.domain, payload.criteria
+    )
+    return {"experts": results}
 
 
 @app.post(f"{settings.api_v1_prefix}/billing/stripe/webhook")

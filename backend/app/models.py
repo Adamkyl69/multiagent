@@ -315,3 +315,107 @@ class TemplateUsage(Base):
     was_helpful: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     feedback_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+# ---------------------------------------------------------------------------
+# MAGDM Decision Engine
+# ---------------------------------------------------------------------------
+
+class DecisionSession(Base):
+    __tablename__ = "decision_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id"), index=True)
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+
+    title: Mapped[str] = mapped_column(String(255))
+    problem_statement: Mapped[str] = mapped_column(Text)
+    domain: Mapped[str] = mapped_column(String(100), default="general")
+
+    # exploration | structured_decision
+    mode: Mapped[str] = mapped_column(String(50), default="exploration")
+    # draft | structuring | evaluating | ranked | archived
+    status: Mapped[str] = mapped_column(String(50), default="draft")
+
+    # Aggregation configuration (weighted_sum_v1)
+    aggregation_method: Mapped[str] = mapped_column(String(50), default="weighted_sum_v1")
+
+    # Cached ranking result JSON (recomputed on demand)
+    ranking_result_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class DecisionAlternative(Base):
+    __tablename__ = "decision_alternatives"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    session_id: Mapped[str] = mapped_column(ForeignKey("decision_sessions.id"), index=True)
+
+    label: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    # active | removed
+    status: Mapped[str] = mapped_column(String(50), default="active")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class DecisionCriterion(Base):
+    __tablename__ = "decision_criteria"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    session_id: Mapped[str] = mapped_column(ForeignKey("decision_sessions.id"), index=True)
+
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    # benefit (higher=better) | cost (lower=better)
+    direction: Mapped[str] = mapped_column(String(20), default="benefit")
+    # Raw user weight (before normalization)
+    weight: Mapped[float] = mapped_column(default=1.0)
+    # Normalized weight (sum=1 across all active criteria)
+    weight_normalized: Mapped[float] = mapped_column(default=0.0)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class DecisionExpert(Base):
+    __tablename__ = "decision_experts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    session_id: Mapped[str] = mapped_column(ForeignKey("decision_sessions.id"), index=True)
+
+    name: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    # system | user_saved | human
+    expert_type: Mapped[str] = mapped_column(String(50), default="system")
+    # V1: equal weights across active experts (1/N), stored normalized
+    weight_normalized: Mapped[float] = mapped_column(default=0.0)
+    # Full agent config for LLM evaluation calls
+    agent_config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    # active | removed
+    status: Mapped[str] = mapped_column(String(50), default="active")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class DecisionEvaluation(Base):
+    """One row per (expert × alternative × criterion). Score 1-10."""
+    __tablename__ = "decision_evaluations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    session_id: Mapped[str] = mapped_column(ForeignKey("decision_sessions.id"), index=True)
+    expert_id: Mapped[str] = mapped_column(ForeignKey("decision_experts.id"), index=True)
+    alternative_id: Mapped[str] = mapped_column(ForeignKey("decision_alternatives.id"), index=True)
+    criterion_id: Mapped[str] = mapped_column(ForeignKey("decision_criteria.id"), index=True)
+
+    raw_score: Mapped[float] = mapped_column(default=5.0)
+    # Normalized 0-1 (computed from raw_score + criterion direction)
+    normalized_score: Mapped[float] = mapped_column(default=0.0)
+    # low | medium | high
+    confidence: Mapped[str] = mapped_column(String(20), default="medium")
+    justification: Mapped[str] = mapped_column(Text, default="")
+    # ai | human
+    source: Mapped[str] = mapped_column(String(20), default="ai")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

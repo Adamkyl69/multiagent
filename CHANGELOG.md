@@ -1,3 +1,40 @@
+# v3.9.0 - 2026-03-23
+
+## Summary
+MAGDM Decision Engine — Replaced freeform debate as the core decision mechanism with a structured Multi-Attribute Group Decision Making (MAGDM) engine. Users can define a decision problem, enumerate alternatives, configure weighted evaluation criteria, select expert evaluator personas, and receive a deterministic ranked recommendation grounded in explicit multi-attribute scoring, weighted aggregation, disagreement analysis, and AI-generated explanation. The theatrical debate loop is retained for exploration mode; structured evaluation is the new default path.
+
+## Files Modified
+- `backend/app/models.py` — modified
+  - Change: Added DecisionSession, DecisionAlternative, DecisionCriterion, DecisionExpert, DecisionEvaluation SQLAlchemy models
+  - Reason: Persistent storage for the MAGDM domain — sessions, entities, score matrix
+- `backend/app/schemas_decision.py` — created
+  - Change: Full set of Pydantic request/response schemas for all MAGDM entities and operations
+  - Reason: Validation and serialization for decision engine API
+- `backend/app/services/decision.py` — created
+  - Change: DecisionService with CRUD, single-pass LLM evaluation engine, deterministic aggregation pipeline (weighted sum, absolute normalization), disagreement metrics, provisional ranking detection, sensitivity analysis, and grounded AI explanation
+  - Reason: Core MAGDM business logic
+- `backend/app/main.py` — modified
+  - Change: 13 new API endpoints under /api/v1/decisions for session CRUD, alternatives, criteria, experts, evaluation trigger, and AI suggestion endpoints
+  - Reason: Expose MAGDM engine to frontend
+- `src/release/types.ts` — modified
+  - Change: Added DecisionSessionResponse, DecisionAlternative, DecisionCriterion, DecisionExpert, DecisionEvaluation, AlternativeScoreDetail, CriterionDisagreement, AlternativeDisagreement, SensitivityItem, RankingResult, DecisionSessionDetail interfaces
+  - Reason: TypeScript types for MAGDM domain
+- `src/release/api.ts` — modified
+  - Change: Added 11 MAGDM API functions (createDecisionSession, listDecisionSessions, getDecisionSession, updateDecisionSession, deleteDecisionSession, updateDecisionAlternatives, updateDecisionCriteria, updateDecisionExperts, runDecisionEvaluation, suggestAlternatives, suggestCriteria, suggestExperts)
+  - Reason: Frontend API client for decision engine
+- `src/release/DecisionWizardScreen.tsx` — created
+  - Change: 4-step guided wizard (Framing → Alternatives → Criteria+Weights → Experts) with AI-suggest buttons, manual editing, weight sliders, and single-click evaluation trigger
+  - Reason: Primary UI for structured decision creation
+- `src/release/DecisionResultsScreen.tsx` — created
+  - Change: Results display with ranked alternatives (score bars), criterion contribution breakdown, expert disagreement panel, sensitivity analysis, provisional warning, and AI explanation
+  - Reason: Results presentation for MAGDM evaluation output
+- `src/release/Sidebar.tsx` — modified
+  - Change: Added 'decisions' to NavView type and DECISIONS nav item
+  - Reason: Navigation entry point for decision engine
+- `src/release/ReleaseApp.tsx` — modified
+  - Change: Import DecisionWizardScreen and render it when activeView === 'decisions'
+  - Reason: Wire decision wizard into app routing
+
 # v3.8.1 - 2026-03-22 17:28
 
 ## Summary

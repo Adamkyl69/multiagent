@@ -1,12 +1,19 @@
 import { API_BASE_URL } from '../lib/env';
 import type {
+  AlternativeScoreDetail,
   AuthMeResponse,
   ClarificationRequiredResponse,
+  DecisionAlternative,
+  DecisionCriterion,
+  DecisionExpert,
+  DecisionSessionDetail,
+  DecisionSessionResponse,
   ExpertTemplateListResponse,
   ExpertTemplateResponse,
   FinalOutputResponse,
   ProjectResponse,
   PromptIntakeAssessment,
+  RankingResult,
   RunResponse,
   TranscriptMessageResponse,
 } from './types';
@@ -381,4 +388,121 @@ export async function suggestExpertTemplates(
   return request<ExpertTemplateResponse[]>(`/api/v1/expert-templates/suggest/${encodeURIComponent(domain)}`, token, {
     method: 'GET',
   });
+}
+
+// ---------------------------------------------------------------------------
+// MAGDM Decision Engine API
+// ---------------------------------------------------------------------------
+
+export async function createDecisionSession(
+  token: string,
+  payload: { title: string; problem_statement: string; domain?: string },
+): Promise<DecisionSessionResponse> {
+  return request<DecisionSessionResponse>('/api/v1/decisions', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listDecisionSessions(token: string): Promise<DecisionSessionResponse[]> {
+  return request<DecisionSessionResponse[]>('/api/v1/decisions', token, { method: 'GET' });
+}
+
+export async function getDecisionSession(token: string, sessionId: string): Promise<DecisionSessionDetail> {
+  return request<DecisionSessionDetail>(`/api/v1/decisions/${sessionId}`, token, { method: 'GET' });
+}
+
+export async function updateDecisionSession(
+  token: string,
+  sessionId: string,
+  payload: { title?: string; problem_statement?: string; domain?: string; mode?: string; status?: string },
+): Promise<DecisionSessionResponse> {
+  return request<DecisionSessionResponse>(`/api/v1/decisions/${sessionId}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteDecisionSession(token: string, sessionId: string): Promise<void> {
+  await request<void>(`/api/v1/decisions/${sessionId}`, token, { method: 'DELETE' });
+}
+
+export async function updateDecisionAlternatives(
+  token: string,
+  sessionId: string,
+  alternatives: Array<{ label: string; description?: string }>,
+): Promise<DecisionAlternative[]> {
+  return request<DecisionAlternative[]>(`/api/v1/decisions/${sessionId}/alternatives`, token, {
+    method: 'PUT',
+    body: JSON.stringify({ alternatives }),
+  });
+}
+
+export async function updateDecisionCriteria(
+  token: string,
+  sessionId: string,
+  criteria: Array<{ name: string; description?: string; direction: 'benefit' | 'cost'; weight: number }>,
+): Promise<DecisionCriterion[]> {
+  return request<DecisionCriterion[]>(`/api/v1/decisions/${sessionId}/criteria`, token, {
+    method: 'PUT',
+    body: JSON.stringify({ criteria }),
+  });
+}
+
+export async function updateDecisionExperts(
+  token: string,
+  sessionId: string,
+  experts: Array<{ name: string; role: string; description?: string; expert_type?: string; agent_config?: Record<string, unknown> }>,
+): Promise<DecisionExpert[]> {
+  return request<DecisionExpert[]>(`/api/v1/decisions/${sessionId}/experts`, token, {
+    method: 'PUT',
+    body: JSON.stringify({ experts }),
+  });
+}
+
+export async function runDecisionEvaluation(token: string, sessionId: string): Promise<RankingResult> {
+  return request<RankingResult>(`/api/v1/decisions/${sessionId}/evaluate`, token, { method: 'POST' });
+}
+
+export async function suggestAlternatives(
+  token: string,
+  problemStatement: string,
+  domain: string,
+  existing?: string[],
+): Promise<Array<{ label: string; description: string }>> {
+  const res = await request<{ alternatives: Array<{ label: string; description: string }> }>(
+    '/api/v1/decisions/suggest/alternatives',
+    token,
+    { method: 'POST', body: JSON.stringify({ problem_statement: problemStatement, domain, existing_alternatives: existing ?? [] }) },
+  );
+  return res.alternatives;
+}
+
+export async function suggestCriteria(
+  token: string,
+  problemStatement: string,
+  domain: string,
+  alternatives?: string[],
+  existingCriteria?: string[],
+): Promise<Array<{ name: string; description: string; direction: string; weight: number }>> {
+  const res = await request<{ criteria: Array<{ name: string; description: string; direction: string; weight: number }> }>(
+    '/api/v1/decisions/suggest/criteria',
+    token,
+    { method: 'POST', body: JSON.stringify({ problem_statement: problemStatement, domain, alternatives: alternatives ?? [], existing_criteria: existingCriteria ?? [] }) },
+  );
+  return res.criteria;
+}
+
+export async function suggestExperts(
+  token: string,
+  problemStatement: string,
+  domain: string,
+  criteria?: string[],
+): Promise<Array<{ name: string; role: string; description: string }>> {
+  const res = await request<{ experts: Array<{ name: string; role: string; description: string }> }>(
+    '/api/v1/decisions/suggest/experts',
+    token,
+    { method: 'POST', body: JSON.stringify({ problem_statement: problemStatement, domain, criteria: criteria ?? [] }) },
+  );
+  return res.experts;
 }
