@@ -372,23 +372,42 @@ class LLMService:
                     ),
                 )
 
-            try:
-                response = await asyncio.to_thread(_call)
-                resolved_model = candidate_model
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = await asyncio.to_thread(_call)
+                    resolved_model = candidate_model
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    error_text = str(exc)
+                    
+                    if "PERMISSION_DENIED" in error_text or "API key" in error_text or "leaked" in error_text.lower():
+                        raise HTTPException(
+                            status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="Gemini API key is invalid, restricted, or has been disabled. Update GEMINI_API_KEY in backend/.env.",
+                        ) from exc
+                    
+                    # Retry on transient errors (503 UNAVAILABLE, 429 RESOURCE_EXHAUSTED)
+                    is_retryable = any(code in error_text for code in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "high demand"])
+                    
+                    if is_retryable and attempt < max_retries - 1:
+                        wait_time = (2 ** attempt) * 1.0  # 1s, 2s, 4s
+                        logger.warning(f"Gemini {candidate_model} transient error (attempt {attempt + 1}/{max_retries}): {error_text}. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    
+                    if "NOT_FOUND" not in error_text and "not found" not in error_text.lower():
+                        raise HTTPException(
+                            status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail=f"Gemini request failed: {error_text}",
+                        ) from exc
+                    
+                    # Model not found, try next candidate
+                    break
+            
+            if response is not None:
                 break
-            except Exception as exc:
-                last_error = exc
-                error_text = str(exc)
-                if "PERMISSION_DENIED" in error_text or "API key" in error_text or "leaked" in error_text.lower():
-                    raise HTTPException(
-                        status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail="Gemini API key is invalid, restricted, or has been disabled. Update GEMINI_API_KEY in backend/.env.",
-                    ) from exc
-                if "NOT_FOUND" not in str(exc) and "not found" not in str(exc).lower():
-                    raise HTTPException(
-                        status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail=f"Gemini request failed: {error_text}",
-                    ) from exc
 
         if response is None:
             raise HTTPException(
@@ -457,12 +476,30 @@ class LLMService:
                     ),
                 )
 
-            try:
-                response = await asyncio.to_thread(_call)
-                resolved_model = candidate_model
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = await asyncio.to_thread(_call)
+                    resolved_model = candidate_model
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    error_text = str(exc)
+                    
+                    # Retry on transient errors (503 UNAVAILABLE, 429 RESOURCE_EXHAUSTED)
+                    is_retryable = any(code in error_text for code in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "high demand"])
+                    
+                    if is_retryable and attempt < max_retries - 1:
+                        wait_time = (2 ** attempt) * 1.0  # 1s, 2s, 4s
+                        logger.warning(f"Gemini {candidate_model} transient error (attempt {attempt + 1}/{max_retries}): {error_text}. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    
+                    # Model not found or non-retryable error, try next candidate
+                    break
+            
+            if response is not None:
                 break
-            except Exception as exc:
-                last_error = exc
 
         if response is None:
             raise HTTPException(
