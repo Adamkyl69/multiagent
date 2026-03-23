@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, ArrowUp } from 'lucide-react';
+import { Mic, MicOff, ArrowUp, Sparkles, MessageSquare } from 'lucide-react';
+import InlineDecisionWizard from './InlineDecisionWizard';
+import InlineDecisionResults from './InlineDecisionResults';
 import {
   generateProjectFromConversation,
   getConversation,
@@ -12,6 +14,7 @@ import type {
   DecisionFrame,
   ProjectResponse,
 } from './conversationTypes';
+import type { RankingResult } from './types';
 
 interface ChatInterfaceProps {
   token: string;
@@ -55,6 +58,8 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
   const [speechSupported, setSpeechSupported] = useState(false);
   const [isTypingAnimation, setIsTypingAnimation] = useState(true);
   const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
+  const [decisionMode, setDecisionMode] = useState<'exploration' | 'structured' | null>(null);
+  const [rankingResult, setRankingResult] = useState<RankingResult | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
@@ -524,6 +529,104 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                 </div>
               </div>
             ))}
+
+            {/* Mode selection after frame */}
+            {context?.stage === 'ready' && !decisionMode && !generating && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 20px', width: '100%' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#F1F5F9', marginBottom: 12 }}>Choose your approach</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <button
+                      onClick={() => setDecisionMode('exploration')}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(139,92,246,0.3)',
+                        background: 'rgba(139,92,246,0.08)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 180ms',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(139,92,246,0.15)';
+                        e.currentTarget.style.borderColor = 'rgba(139,92,246,0.5)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'rgba(139,92,246,0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(139,92,246,0.3)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <MessageSquare style={{ width: 16, height: 16, color: '#A78BFA' }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#C4B5FD' }}>Explore Perspectives</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.5 }}>
+                        Multi-agent debate to surface insights and tradeoffs
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setDecisionMode('structured')}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(99,102,241,0.3)',
+                        background: 'rgba(99,102,241,0.08)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 180ms',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(99,102,241,0.15)';
+                        e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'rgba(99,102,241,0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <Sparkles style={{ width: 16, height: 16, color: '#A5B4FC' }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#C7D2FE' }}>Get Structured Ranking</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.5 }}>
+                        Weighted evaluation with deterministic scoring
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Inline MAGDM wizard */}
+            {decisionMode === 'structured' && !rankingResult && context?.decision_frame && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
+                <div style={{ width: '100%' }}>
+                  <InlineDecisionWizard
+                    token={token}
+                    title={context.decision_frame.title || 'Decision'}
+                    problemStatement={context.decision_frame.problem_statement || ''}
+                    domain={context.decision_frame.domain || 'general'}
+                    onComplete={(ranking) => {
+                      setRankingResult(ranking);
+                      scrollToBottom();
+                    }}
+                    onCancel={() => {
+                      setDecisionMode(null);
+                      scrollToBottom();
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Inline MAGDM results */}
+            {rankingResult && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
+                <div style={{ width: '100%' }}>
+                  <InlineDecisionResults ranking={rankingResult} />
+                </div>
+              </div>
+            )}
 
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
