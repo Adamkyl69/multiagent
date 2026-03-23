@@ -345,35 +345,83 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
               {/* Input bar below hero */}
               <div style={{ padding: '0 24px 20px' }}>
                 <div style={{ maxWidth: 720, margin: '0 auto' }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      {/* Tools button inside input */}
+                  <div style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 16,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    transition: 'all 180ms',
+                    position: 'relative'
+                  }}
+                  onFocus={e => {
+                    e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                  }}
+                  onBlur={e => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  }}>
+                    <textarea
+                      value={input}
+                      onChange={(e) => {
+                        setIsTypingAnimation(false);
+                        setInput(e.target.value);
+                      }}
+                      onKeyPress={handleKeyPress}
+                      placeholder={sessionId ? 'Type your response...' : 'What decision do you need to make?'}
+                      disabled={loading || generating}
+                      rows={1}
+                      style={{
+                        width: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '16px 18px',
+                        fontSize: 14.5,
+                        color: '#F1F5F9',
+                        outline: 'none',
+                        fontFamily: 'DM Sans, system-ui, sans-serif',
+                        resize: 'none',
+                        minHeight: '52px',
+                        maxHeight: '150px',
+                        overflowY: 'auto',
+                        lineHeight: '1.5',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
+                      }}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = 'auto';
+                        target.style.height = Math.min(target.scrollHeight, 150) + 'px';
+                      }}
+                    />
+
+                    {/* Bottom toolbar */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 8px 12px' }}>
+                      {/* Left: Tools Menu */}
                       <div style={{ position: 'relative' }} ref={toolsMenuRef}>
                         <button
                           onClick={() => setShowToolsMenu(!showToolsMenu)}
                           disabled={loading || generating}
                           style={{
-                            position: 'absolute',
-                            left: '12px',
-                            bottom: '13px',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '28px',
-                            height: '28px',
+                            gap: 6,
+                            padding: '6px 10px',
                             background: 'transparent',
                             border: 'none',
-                            borderRadius: '6px',
+                            borderRadius: '8px',
                             color: showToolsMenu ? '#A5B4FC' : '#64748B',
+                            fontSize: 13,
+                            fontWeight: 500,
                             cursor: loading || generating ? 'not-allowed' : 'pointer',
                             transition: 'all 180ms',
-                            padding: 0,
-                            zIndex: 10,
+                            fontFamily: 'DM Sans, system-ui, sans-serif',
                           }}
                           onMouseEnter={e => {
                             if (!loading && !generating) {
-                              e.currentTarget.style.color = '#A5B4FC';
-                              e.currentTarget.style.background = 'rgba(99,102,241,0.1)';
+                              e.currentTarget.style.color = '#F1F5F9';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
                             }
                           }}
                           onMouseLeave={e => {
@@ -382,9 +430,9 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                               e.currentTarget.style.background = 'transparent';
                             }
                           }}
-                          title="Tools"
                         >
-                          <Wrench style={{ width: 18, height: 18 }} />
+                          <Wrench style={{ width: 15, height: 15 }} />
+                          <span>Tools</span>
                         </button>
 
                         {/* Tools dropdown menu */}
@@ -488,123 +536,75 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                         )}
                       </div>
 
-                      <textarea
-                        value={input}
-                        onChange={(e) => {
-                          setIsTypingAnimation(false);
-                          setInput(e.target.value);
-                        }}
-                        onKeyPress={handleKeyPress}
-                        placeholder={sessionId ? 'Type your response...' : 'What decision do you need to make?'}
-                        disabled={loading || generating}
-                        rows={1}
-                        style={{
-                          width: '100%',
-                          background: 'rgba(255,255,255,0.04)',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          borderRadius: 12,
-                          padding: '13px 18px',
-                          paddingLeft: '48px',
-                          paddingRight: speechSupported ? '80px' : '50px',
-                          fontSize: 14.5,
-                          color: '#F1F5F9',
-                          outline: 'none',
-                          fontFamily: 'DM Sans, system-ui, sans-serif',
-                          resize: 'none',
-                          minHeight: '46px',
-                          maxHeight: '150px',
-                          overflowY: 'auto',
-                          lineHeight: '1.5',
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
-                        }}
-                        onFocus={e => {
-                          setIsTypingAnimation(false);
-                          e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                        }}
-                        onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                        }}
-                        onInput={(e) => {
-                          const target = e.target as HTMLTextAreaElement;
-                          target.style.height = 'auto';
-                          target.style.height = Math.min(target.scrollHeight, 150) + 'px';
-                        }}
-                      />
-                      <button
-                        onClick={sessionId ? handleSend : () => handleStart(input)}
-                        disabled={!input.trim() || loading || generating}
-                        style={{
-                          position: 'absolute',
-                          right: speechSupported ? '44px' : '12px',
-                          bottom: '13px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '28px',
-                          height: '28px',
-                          background: !input.trim() || loading || generating ? 'transparent' : '#6366F1',
-                          border: 'none',
-                          borderRadius: '50%',
-                          color: !input.trim() || loading || generating ? '#475569' : '#fff',
-                          cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
-                          transition: 'all 180ms',
-                          padding: 0,
-                        }}
-                        onMouseEnter={e => {
-                          if (input.trim() && !loading && !generating) {
-                            e.currentTarget.style.background = '#818CF8';
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          if (input.trim() && !loading && !generating) {
-                            e.currentTarget.style.background = '#6366F1';
-                          }
-                        }}
-                        title="Send message"
-                      >
-                        <ArrowUp size={18} />
-                      </button>
-                      {speechSupported && (
+                      {/* Right: Actions */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {speechSupported && (
+                          <button
+                            onClick={toggleSpeechRecognition}
+                            disabled={loading || generating}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '32px',
+                              height: '32px',
+                              background: 'transparent',
+                              border: 'none',
+                              borderRadius: '50%',
+                              color: isListening ? '#EF4444' : '#64748B',
+                              cursor: loading || generating ? 'not-allowed' : 'pointer',
+                              transition: 'all 180ms',
+                              padding: 0,
+                            }}
+                            onMouseEnter={e => {
+                              if (!loading && !generating) {
+                                e.currentTarget.style.color = isListening ? '#DC2626' : '#94A3B8';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                              }
+                            }}
+                            onMouseLeave={e => {
+                              if (!loading && !generating) {
+                                e.currentTarget.style.color = isListening ? '#EF4444' : '#64748B';
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
+                            title={isListening ? 'Stop recording' : 'Start voice input'}
+                          >
+                            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                          </button>
+                        )}
                         <button
-                          onClick={toggleSpeechRecognition}
-                          disabled={loading || generating}
+                          onClick={sessionId ? handleSend : () => handleStart(input)}
+                          disabled={!input.trim() || loading || generating}
                           style={{
-                            position: 'absolute',
-                            right: '12px',
-                            bottom: '13px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: '28px',
-                            height: '28px',
-                            background: 'transparent',
+                            width: '32px',
+                            height: '32px',
+                            background: !input.trim() || loading || generating ? 'rgba(255,255,255,0.1)' : '#F1F5F9',
                             border: 'none',
                             borderRadius: '50%',
-                            color: isListening ? '#EF4444' : '#64748B',
-                            cursor: loading || generating ? 'not-allowed' : 'pointer',
+                            color: !input.trim() || loading || generating ? 'rgba(255,255,255,0.3)' : '#0B0E1A',
+                            cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
                             transition: 'all 180ms',
                             padding: 0,
                           }}
                           onMouseEnter={e => {
-                            if (!loading && !generating) {
-                              e.currentTarget.style.color = isListening ? '#DC2626' : '#94A3B8';
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            if (input.trim() && !loading && !generating) {
+                              e.currentTarget.style.background = '#FFFFFF';
                             }
                           }}
                           onMouseLeave={e => {
-                            if (!loading && !generating) {
-                              e.currentTarget.style.color = isListening ? '#EF4444' : '#64748B';
-                              e.currentTarget.style.background = 'transparent';
+                            if (input.trim() && !loading && !generating) {
+                              e.currentTarget.style.background = '#F1F5F9';
                             }
                           }}
-                          title={isListening ? 'Stop recording' : 'Start voice input'}
+                          title="Send message"
                         >
-                          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                          <ArrowUp size={18} />
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -737,151 +737,25 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
             </div>
 
             {/* Input bar at bottom for active chat */}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 24px', background: 'rgba(11,14,26,0.8)', backdropFilter: 'blur(12px)' }}>
-              <div style={{ display: 'flex', gap: 12, maxWidth: 720, margin: '0 auto', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
-                  {/* Tools button inside input */}
-                  <div style={{ position: 'relative' }} ref={toolsMenuRef}>
-                    <button
-                      onClick={() => setShowToolsMenu(!showToolsMenu)}
-                      disabled={loading || generating}
-                      style={{
-                        position: 'absolute',
-                        left: '12px',
-                        bottom: '13px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '28px',
-                        height: '28px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: showToolsMenu ? '#A5B4FC' : '#64748B',
-                        cursor: loading || generating ? 'not-allowed' : 'pointer',
-                        transition: 'all 180ms',
-                        padding: 0,
-                        zIndex: 10,
-                      }}
-                      onMouseEnter={e => {
-                        if (!loading && !generating) {
-                          e.currentTarget.style.color = '#A5B4FC';
-                          e.currentTarget.style.background = 'rgba(99,102,241,0.1)';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (!showToolsMenu) {
-                          e.currentTarget.style.color = '#64748B';
-                          e.currentTarget.style.background = 'transparent';
-                        }
-                      }}
-                      title="Tools"
-                    >
-                      <Wrench style={{ width: 18, height: 18 }} />
-                    </button>
-
-                    {/* Tools dropdown menu */}
-                    {showToolsMenu && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '100%',
-                      left: 0,
-                      marginBottom: 8,
-                      background: 'rgba(17,24,39,0.95)',
-                      backdropFilter: 'blur(16px)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: 12,
-                      padding: '8px',
-                      minWidth: 280,
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                      zIndex: 1000,
-                    }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#475569', padding: '8px 12px', marginBottom: 4 }}>Decision Mode</div>
-                      <button
-                        onClick={() => {
-                          setDecisionMode('exploration');
-                          setRankingResult(null);
-                          setShowToolsMenu(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '10px 12px',
-                          background: decisionMode === 'exploration' ? 'rgba(139,92,246,0.15)' : 'transparent',
-                          border: 'none',
-                          borderRadius: 8,
-                          cursor: 'pointer',
-                          transition: 'all 150ms',
-                          marginBottom: 4,
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = decisionMode === 'exploration' ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = decisionMode === 'exploration' ? 'rgba(139,92,246,0.15)' : 'transparent';
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <MessageSquare style={{ width: 16, height: 16, color: decisionMode === 'exploration' ? '#A78BFA' : '#64748B' }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: decisionMode === 'exploration' ? '#C4B5FD' : '#F1F5F9', marginBottom: 2 }}>Exploratory Mode</div>
-                            <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>Multi-agent debate to surface insights</div>
-                          </div>
-                          {decisionMode === 'exploration' && (
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#A78BFA' }} />
-                          )}
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (context?.decision_frame) {
-                            setDecisionMode('structured');
-                            setRankingResult(null);
-                            setShowToolsMenu(false);
-                          }
-                        }}
-                        disabled={!context?.decision_frame}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '10px 12px',
-                          background: decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent',
-                          border: 'none',
-                          borderRadius: 8,
-                          cursor: context?.decision_frame ? 'pointer' : 'not-allowed',
-                          opacity: context?.decision_frame ? 1 : 0.5,
-                          transition: 'all 150ms',
-                        }}
-                        onMouseEnter={e => {
-                          if (context?.decision_frame) {
-                            e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)';
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent';
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Sparkles style={{ width: 16, height: 16, color: decisionMode === 'structured' ? '#A5B4FC' : '#64748B' }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: decisionMode === 'structured' ? '#C7D2FE' : '#F1F5F9', marginBottom: 2 }}>MAGDM Decision Mode</div>
-                            <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>Structured ranking with weighted scoring</div>
-                          </div>
-                          {decisionMode === 'structured' && (
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#A5B4FC' }} />
-                          )}
-                        </div>
-                      </button>
-                      {!context?.decision_frame && (
-                        <div style={{ fontSize: 10, color: '#64748B', padding: '8px 12px', lineHeight: 1.4 }}>
-                          Complete the decision framing first to enable MAGDM mode
-                        </div>
-                      )}
-                    </div>
-                    )}
-                  </div>
-
-
+            <div style={{ padding: '20px 24px', background: 'rgba(11,14,26,0.8)', backdropFilter: 'blur(12px)' }}>
+              <div style={{ maxWidth: 720, margin: '0 auto' }}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'all 180ms',
+                  position: 'relative'
+                }}
+                onFocus={e => {
+                  e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                }}
+                onBlur={e => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                }}>
                   <textarea
                     value={input}
                     onChange={(e) => {
@@ -894,32 +768,20 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                     rows={1}
                     style={{
                       width: '100%',
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 12,
-                      padding: '13px 18px',
-                      paddingLeft: '48px',
-                      paddingRight: speechSupported ? '80px' : '50px',
+                      background: 'transparent',
+                      border: 'none',
+                      padding: '16px 18px',
                       fontSize: 14.5,
                       color: '#F1F5F9',
                       outline: 'none',
                       fontFamily: 'DM Sans, system-ui, sans-serif',
                       resize: 'none',
-                      minHeight: '46px',
+                      minHeight: '52px',
                       maxHeight: '150px',
                       overflowY: 'auto',
                       lineHeight: '1.5',
                       scrollbarWidth: 'thin',
                       scrollbarColor: 'rgba(99,102,241,0.5) rgba(255,255,255,0.05)',
-                    }}
-                    onFocus={e => {
-                      setIsTypingAnimation(false);
-                      e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                    }}
-                    onBlur={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
                     }}
                     onInput={(e) => {
                       const target = e.target as HTMLTextAreaElement;
@@ -927,78 +789,217 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                       target.style.height = Math.min(target.scrollHeight, 150) + 'px';
                     }}
                   />
-                  <button
-                    onClick={sessionId ? handleSend : () => handleStart(input)}
-                    disabled={!input.trim() || loading || generating}
-                    style={{
-                      position: 'absolute',
-                      right: speechSupported ? '44px' : '12px',
-                      bottom: '13px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '28px',
-                      height: '28px',
-                      background: !input.trim() || loading || generating ? 'transparent' : '#6366F1',
-                      border: 'none',
-                      borderRadius: '50%',
-                      color: !input.trim() || loading || generating ? '#475569' : '#fff',
-                      cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
-                      transition: 'all 180ms',
-                      padding: 0,
-                    }}
-                    onMouseEnter={e => {
-                      if (input.trim() && !loading && !generating) {
-                        e.currentTarget.style.background = '#818CF8';
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      if (input.trim() && !loading && !generating) {
-                        e.currentTarget.style.background = '#6366F1';
-                      }
-                    }}
-                    title="Send message"
-                  >
-                    <ArrowUp size={18} />
-                  </button>
-                  {speechSupported && (
-                    <button
-                      onClick={toggleSpeechRecognition}
-                      disabled={loading || generating}
-                      style={{
+
+                  {/* Bottom toolbar */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 8px 12px' }}>
+                    {/* Left: Tools Menu */}
+                    <div style={{ position: 'relative' }} ref={toolsMenuRef}>
+                      <button
+                        onClick={() => setShowToolsMenu(!showToolsMenu)}
+                        disabled={loading || generating}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 10px',
+                          background: 'transparent',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: showToolsMenu ? '#A5B4FC' : '#64748B',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: loading || generating ? 'not-allowed' : 'pointer',
+                          transition: 'all 180ms',
+                          fontFamily: 'DM Sans, system-ui, sans-serif',
+                        }}
+                        onMouseEnter={e => {
+                          if (!loading && !generating) {
+                            e.currentTarget.style.color = '#F1F5F9';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!showToolsMenu) {
+                            e.currentTarget.style.color = '#64748B';
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        <Wrench style={{ width: 15, height: 15 }} />
+                        <span>Tools</span>
+                      </button>
+
+                      {/* Tools dropdown menu */}
+                      {showToolsMenu && (
+                      <div style={{
                         position: 'absolute',
-                        right: '12px',
-                        bottom: '13px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '28px',
-                        height: '28px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: '50%',
-                        color: isListening ? '#EF4444' : '#64748B',
-                        cursor: loading || generating ? 'not-allowed' : 'pointer',
-                        transition: 'all 180ms',
-                        padding: 0,
-                      }}
-                      onMouseEnter={e => {
-                        if (!loading && !generating) {
-                          e.currentTarget.style.color = isListening ? '#DC2626' : '#94A3B8';
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (!loading && !generating) {
-                          e.currentTarget.style.color = isListening ? '#EF4444' : '#64748B';
-                          e.currentTarget.style.background = 'transparent';
-                        }
-                      }}
-                      title={isListening ? 'Stop recording' : 'Start voice input'}
-                    >
-                      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-                    </button>
-                  )}
+                        bottom: '100%',
+                        left: 0,
+                        marginBottom: 8,
+                        background: 'rgba(17,24,39,0.95)',
+                        backdropFilter: 'blur(16px)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 12,
+                        padding: '8px',
+                        minWidth: 280,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                        zIndex: 1000,
+                      }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#475569', padding: '8px 12px', marginBottom: 4 }}>Decision Mode</div>
+                        <button
+                          onClick={() => {
+                            setDecisionMode('exploration');
+                            setRankingResult(null);
+                            setShowToolsMenu(false);
+                          }}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '10px 12px',
+                            background: decisionMode === 'exploration' ? 'rgba(139,92,246,0.15)' : 'transparent',
+                            border: 'none',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            transition: 'all 150ms',
+                            marginBottom: 4,
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = decisionMode === 'exploration' ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = decisionMode === 'exploration' ? 'rgba(139,92,246,0.15)' : 'transparent';
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <MessageSquare style={{ width: 16, height: 16, color: decisionMode === 'exploration' ? '#A78BFA' : '#64748B' }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: decisionMode === 'exploration' ? '#C4B5FD' : '#F1F5F9', marginBottom: 2 }}>Exploratory Mode</div>
+                              <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>Multi-agent debate to surface insights</div>
+                            </div>
+                            {decisionMode === 'exploration' && (
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#A78BFA' }} />
+                            )}
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (context?.decision_frame) {
+                              setDecisionMode('structured');
+                              setRankingResult(null);
+                              setShowToolsMenu(false);
+                            }
+                          }}
+                          disabled={!context?.decision_frame}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '10px 12px',
+                            background: decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                            border: 'none',
+                            borderRadius: 8,
+                            cursor: context?.decision_frame ? 'pointer' : 'not-allowed',
+                            opacity: context?.decision_frame ? 1 : 0.5,
+                            transition: 'all 150ms',
+                          }}
+                          onMouseEnter={e => {
+                            if (context?.decision_frame) {
+                              e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent';
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Sparkles style={{ width: 16, height: 16, color: decisionMode === 'structured' ? '#A5B4FC' : '#64748B' }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: decisionMode === 'structured' ? '#C7D2FE' : '#F1F5F9', marginBottom: 2 }}>MAGDM Decision Mode</div>
+                              <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>Structured ranking with weighted scoring</div>
+                            </div>
+                            {decisionMode === 'structured' && (
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#A5B4FC' }} />
+                            )}
+                          </div>
+                        </button>
+                        {!context?.decision_frame && (
+                          <div style={{ fontSize: 10, color: '#64748B', padding: '8px 12px', lineHeight: 1.4 }}>
+                            Complete the decision framing first to enable MAGDM mode
+                          </div>
+                        )}
+                      </div>
+                      )}
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {speechSupported && (
+                        <button
+                          onClick={toggleSpeechRecognition}
+                          disabled={loading || generating}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: '50%',
+                            color: isListening ? '#EF4444' : '#64748B',
+                            cursor: loading || generating ? 'not-allowed' : 'pointer',
+                            transition: 'all 180ms',
+                            padding: 0,
+                          }}
+                          onMouseEnter={e => {
+                            if (!loading && !generating) {
+                              e.currentTarget.style.color = isListening ? '#DC2626' : '#94A3B8';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if (!loading && !generating) {
+                              e.currentTarget.style.color = isListening ? '#EF4444' : '#64748B';
+                              e.currentTarget.style.background = 'transparent';
+                            }
+                          }}
+                          title={isListening ? 'Stop recording' : 'Start voice input'}
+                        >
+                          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                        </button>
+                      )}
+                      <button
+                        onClick={sessionId ? handleSend : () => handleStart(input)}
+                        disabled={!input.trim() || loading || generating}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '32px',
+                          height: '32px',
+                          background: !input.trim() || loading || generating ? 'rgba(255,255,255,0.1)' : '#F1F5F9',
+                          border: 'none',
+                          borderRadius: '50%',
+                          color: !input.trim() || loading || generating ? 'rgba(255,255,255,0.3)' : '#0B0E1A',
+                          cursor: !input.trim() || loading || generating ? 'not-allowed' : 'pointer',
+                          transition: 'all 180ms',
+                          padding: 0,
+                        }}
+                        onMouseEnter={e => {
+                          if (input.trim() && !loading && !generating) {
+                            e.currentTarget.style.background = '#FFFFFF';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (input.trim() && !loading && !generating) {
+                            e.currentTarget.style.background = '#F1F5F9';
+                          }
+                        }}
+                        title="Send message"
+                      >
+                        <ArrowUp size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
