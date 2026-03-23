@@ -196,6 +196,21 @@ $btnKillPorts.Add_Click({
     $global:backendJob = $null
     $global:frontendJob = $null
 
+    # Wait for processes to fully terminate
+    Start-Sleep -Seconds 2
+    
+    # Force-kill any remaining processes on critical ports
+    foreach ($port in @(3000, 8000)) {
+        $remaining = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+        foreach ($pid in $remaining) {
+            if ($pid -and $pid -gt 0) {
+                taskkill /F /PID $pid /T 2>$null | Out-Null
+                $killed.Add("Port $port -> PID $pid (retry)")
+            }
+        }
+    }
+
     $lblBackend.Text = "Backend: STOPPED"
     $lblBackend.ForeColor = [System.Drawing.Color]::Red
     $lblFrontend.Text = "Frontend: STOPPED"
