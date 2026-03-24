@@ -452,7 +452,7 @@ export async function updateDecisionCriteria(
 export async function updateDecisionExperts(
   token: string,
   sessionId: string,
-  experts: Array<{ name: string; role: string; description?: string; expert_type?: string; agent_config?: Record<string, unknown> }>,
+  experts: Array<{ name: string; role: string; description?: string; weight?: number; expert_type?: string; agent_config?: Record<string, unknown> }>,
 ): Promise<DecisionExpert[]> {
   return request<DecisionExpert[]>(`/api/v1/decisions/${sessionId}/experts`, token, {
     method: 'PUT',

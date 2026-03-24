@@ -490,18 +490,18 @@ class DecisionService:
             await db.delete(row)
         await db.flush()
 
-        n = len(req.experts)
-        equal_weight = round(1.0 / n, 6) if n > 0 else 0.0
+        raw_weights = [e.weight for e in req.experts]
+        normalized_weights = _normalize_weights(raw_weights)
 
         results = []
-        for i, exp_in in enumerate(req.experts):
+        for i, (exp_in, w_norm) in enumerate(zip(req.experts, normalized_weights)):
             exp = DecisionExpert(
                 session_id=session_id,
                 name=exp_in.name,
                 role=exp_in.role,
                 description=exp_in.description,
                 expert_type=exp_in.expert_type,
-                weight_normalized=equal_weight,
+                weight_normalized=round(w_norm, 6),
                 agent_config_json=exp_in.agent_config,
                 status="active",
                 position=i,

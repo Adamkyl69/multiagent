@@ -93,6 +93,7 @@ class ExpertIn(BaseModel):
     role: str = Field(min_length=1, max_length=255)
     description: str = Field(default="", max_length=1000)
     expert_type: str = Field(default="system")
+    weight: float = Field(default=1.0, gt=0)  # raw trust level, normalized server-side
     agent_config: dict[str, Any] = Field(default_factory=dict)
 
 
