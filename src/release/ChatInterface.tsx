@@ -200,9 +200,15 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
     setLoading(true);
     setError(null);
 
+    // If user selected MAGDM mode on landing page, append a framing request
+    let payloadMessage = initialMessage;
+    if (decisionMode === 'structured' && !context?.decision_frame) {
+      payloadMessage = `${initialMessage}\n\n[System Note: The user has selected Structured MAGDM Mode but hasn't framed the decision yet. Acknowledge their topic and ask the necessary questions to establish a complete Decision Frame (topic, goal, stakes, timeline) so we can proceed with MAGDM.]`;
+    }
+
     try {
       const response = await startConversation(token, {
-        initial_message: initialMessage,
+        initial_message: payloadMessage,
       });
 
       setSessionId(response.session_id);
@@ -228,6 +234,12 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
     setLoading(true);
     setError(null);
 
+    // If user switched to MAGDM mode during chat but frame is incomplete
+    let payloadMessage = userMessage;
+    if (decisionMode === 'structured' && !context?.decision_frame) {
+      payloadMessage = `${userMessage}\n\n[System Note: The user wants to use Structured MAGDM Mode. If the Decision Frame is not yet complete, ask the necessary questions to establish it (topic, goal, stakes, timeline) so we can proceed with MAGDM.]`;
+    }
+
     setMessages((prev) => [
       ...prev,
       { id: `user-${Date.now()}`, role: 'user', content: userMessage, created_at: new Date().toISOString() },
@@ -235,7 +247,7 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
 
     try {
       const response = await sendConversationMessage(token, sessionId, {
-        content: userMessage,
+        content: payloadMessage,
       });
 
       setMessages((prev) => [...prev, response.message]);
@@ -488,13 +500,10 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                             </button>
                             <button
                               onClick={() => {
-                                if (context?.decision_frame) {
-                                  setDecisionMode('structured');
-                                  setRankingResult(null);
-                                  setShowToolsMenu(false);
-                                }
+                                setDecisionMode('structured');
+                                setRankingResult(null);
+                                setShowToolsMenu(false);
                               }}
-                              disabled={!context?.decision_frame}
                               style={{
                                 width: '100%',
                                 textAlign: 'left',
@@ -502,14 +511,11 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                                 background: decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent',
                                 border: 'none',
                                 borderRadius: 8,
-                                cursor: context?.decision_frame ? 'pointer' : 'not-allowed',
-                                opacity: context?.decision_frame ? 1 : 0.5,
+                                cursor: 'pointer',
                                 transition: 'all 150ms',
                               }}
                               onMouseEnter={e => {
-                                if (context?.decision_frame) {
-                                  e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)';
-                                }
+                                e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)';
                               }}
                               onMouseLeave={e => {
                                 e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent';
@@ -526,11 +532,6 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                                 )}
                               </div>
                             </button>
-                            {!context?.decision_frame && (
-                              <div style={{ fontSize: 10, color: '#64748B', padding: '8px 12px', lineHeight: 1.4 }}>
-                                Complete the decision framing first to enable MAGDM mode
-                              </div>
-                            )}
                           </div>
                         )}
                       </div>
@@ -881,13 +882,10 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                         </button>
                         <button
                           onClick={() => {
-                            if (context?.decision_frame) {
-                              setDecisionMode('structured');
-                              setRankingResult(null);
-                              setShowToolsMenu(false);
-                            }
+                            setDecisionMode('structured');
+                            setRankingResult(null);
+                            setShowToolsMenu(false);
                           }}
-                          disabled={!context?.decision_frame}
                           style={{
                             width: '100%',
                             textAlign: 'left',
@@ -895,14 +893,11 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                             background: decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent',
                             border: 'none',
                             borderRadius: 8,
-                            cursor: context?.decision_frame ? 'pointer' : 'not-allowed',
-                            opacity: context?.decision_frame ? 1 : 0.5,
+                            cursor: 'pointer',
                             transition: 'all 150ms',
                           }}
                           onMouseEnter={e => {
-                            if (context?.decision_frame) {
-                              e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)';
-                            }
+                            e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)';
                           }}
                           onMouseLeave={e => {
                             e.currentTarget.style.background = decisionMode === 'structured' ? 'rgba(99,102,241,0.15)' : 'transparent';
@@ -919,11 +914,6 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                             )}
                           </div>
                         </button>
-                        {!context?.decision_frame && (
-                          <div style={{ fontSize: 10, color: '#64748B', padding: '8px 12px', lineHeight: 1.4 }}>
-                            Complete the decision framing first to enable MAGDM mode
-                          </div>
-                        )}
                       </div>
                       )}
                     </div>
