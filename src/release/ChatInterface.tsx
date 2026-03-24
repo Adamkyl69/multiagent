@@ -703,9 +703,16 @@ Do NOT list these out robotically; weave them naturally into your response so we
                 <div style={{ width: '100%' }}>
                   <InlineDecisionWizard
                     token={token}
-                    title={context.decision_frame.title || 'Decision'}
-                    problemStatement={context.decision_frame.problem_statement || ''}
-                    domain={context.decision_frame.domain || 'general'}
+                    title={(context.decision_frame.decision_statement || context.decision_frame.title || 'Decision').slice(0, 255)}
+                    problemStatement={
+                      (() => {
+                        const stmt = context.decision_frame.decision_statement || context.decision_frame.problem_statement || '';
+                        const obj = context.decision_frame.primary_objective || '';
+                        const combined = [stmt, obj].filter(Boolean).join(' — ');
+                        return combined.length >= 10 ? combined : `Decision: ${combined || 'General decision'}`;
+                      })()
+                    }
+                    domain={context.decision_frame.domain || context.decision_frame.classification?.domain || 'general'}
                     onComplete={(ranking, sessionData) => {
                       setRankingResult(ranking);
                       setWizardData(sessionData);
