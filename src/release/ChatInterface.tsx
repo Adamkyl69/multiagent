@@ -203,7 +203,12 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
     // If user selected MAGDM mode on landing page, append a framing request
     let payloadMessage = initialMessage;
     if (decisionMode === 'structured' && !context?.decision_frame) {
-      payloadMessage = `${initialMessage}\n\n[System Note: The user has selected Structured MAGDM Mode but hasn't framed the decision yet. Acknowledge their topic and ask the necessary questions to establish a complete Decision Frame (topic, goal, stakes, timeline) so we can proceed with MAGDM.]`;
+      payloadMessage = `${initialMessage}\n\n[System Note: The user has selected Structured MAGDM Mode but hasn't framed the decision yet. Acknowledge their topic and ask targeted questions to collect these specific missing elements to establish a complete Decision Frame:
+1. "topic": A clear 1-sentence statement of what is being decided.
+2. "goal": What does a successful outcome look like?
+3. "stakes": Is this low, medium, high, or critical stakes?
+4. "timeline": By when does this decision need to be made?
+Do NOT list these out robotically; weave them naturally into your response so we can proceed with MAGDM ranking.]`;
     }
 
     try {
@@ -237,7 +242,12 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
     // If user switched to MAGDM mode during chat but frame is incomplete
     let payloadMessage = userMessage;
     if (decisionMode === 'structured' && !context?.decision_frame) {
-      payloadMessage = `${userMessage}\n\n[System Note: The user wants to use Structured MAGDM Mode. If the Decision Frame is not yet complete, ask the necessary questions to establish it (topic, goal, stakes, timeline) so we can proceed with MAGDM.]`;
+      payloadMessage = `${userMessage}\n\n[System Note: The user wants to use Structured MAGDM Mode but the Decision Frame is not yet complete. Please ask targeted questions to collect these specific missing elements:
+1. "topic": A clear 1-sentence statement of what is being decided.
+2. "goal": What does a successful outcome look like?
+3. "stakes": Is this low, medium, high, or critical stakes?
+4. "timeline": By when does this decision need to be made?
+Do NOT list these out robotically; weave them naturally into your response so we can proceed with MAGDM ranking.]`;
     }
 
     setMessages((prev) => [
