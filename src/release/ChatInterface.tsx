@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, ArrowUp, Sparkles, MessageSquare, Wrench } from 'lucide-react';
+import { Mic, MicOff, ArrowUp, Sparkles, MessageSquare, SlidersVertical } from 'lucide-react';
 import InlineDecisionWizard from './InlineDecisionWizard';
 import InlineDecisionResults from './InlineDecisionResults';
 import {
@@ -406,22 +406,21 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 10px',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
                             background: 'transparent',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: '50%',
                             color: showToolsMenu ? '#A5B4FC' : '#64748B',
-                            fontSize: 13,
-                            fontWeight: 500,
                             cursor: loading || generating ? 'not-allowed' : 'pointer',
                             transition: 'all 180ms',
-                            fontFamily: 'DM Sans, system-ui, sans-serif',
+                            padding: 0,
                           }}
                           onMouseEnter={e => {
                             if (!loading && !generating) {
                               e.currentTarget.style.color = '#F1F5F9';
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                             }
                           }}
                           onMouseLeave={e => {
@@ -430,9 +429,9 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                               e.currentTarget.style.background = 'transparent';
                             }
                           }}
+                          title="Tools"
                         >
-                          <Wrench style={{ width: 15, height: 15 }} />
-                          <span>Tools</span>
+                          <SlidersVertical style={{ width: 18, height: 18 }} />
                         </button>
 
                         {/* Tools dropdown menu */}
@@ -800,22 +799,21 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
-                          padding: '6px 10px',
+                          justifyContent: 'center',
+                          width: '32px',
+                          height: '32px',
                           background: 'transparent',
                           border: 'none',
-                          borderRadius: '8px',
+                          borderRadius: '50%',
                           color: showToolsMenu ? '#A5B4FC' : '#64748B',
-                          fontSize: 13,
-                          fontWeight: 500,
                           cursor: loading || generating ? 'not-allowed' : 'pointer',
                           transition: 'all 180ms',
-                          fontFamily: 'DM Sans, system-ui, sans-serif',
+                          padding: 0,
                         }}
                         onMouseEnter={e => {
                           if (!loading && !generating) {
                             e.currentTarget.style.color = '#F1F5F9';
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                           }
                         }}
                         onMouseLeave={e => {
@@ -824,9 +822,9 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
                             e.currentTarget.style.background = 'transparent';
                           }
                         }}
+                        title="Tools"
                       >
-                        <Wrench style={{ width: 15, height: 15 }} />
-                        <span>Tools</span>
+                        <SlidersVertical style={{ width: 18, height: 18 }} />
                       </button>
 
                       {/* Tools dropdown menu */}
