@@ -12,12 +12,18 @@ import {
 } from './api';
 import type { DecisionSessionResponse, RankingResult } from './types';
 
+export interface WizardSessionData {
+  alts: AltDraft[];
+  crits: CritDraft[];
+  experts: ExpDraft[];
+}
+
 interface Props {
   token: string;
   title: string;
   problemStatement: string;
   domain: string;
-  onComplete: (ranking: RankingResult) => void;
+  onComplete: (ranking: RankingResult, sessionData: WizardSessionData) => void;
   onCancel: () => void;
 }
 
@@ -157,7 +163,7 @@ export default function InlineDecisionWizard({ token, title, problemStatement, d
     try {
       await updateDecisionExperts(token, session!.id, activeExperts);
       const result = await runDecisionEvaluation(token, session!.id);
-      onComplete(result);
+      onComplete(result, { alts, crits, experts });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Evaluation failed');
       setStep('experts');

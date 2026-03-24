@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Mic, MicOff, ArrowUp, Sparkles, MessageSquare, SlidersVertical } from 'lucide-react';
-import InlineDecisionWizard from './InlineDecisionWizard';
+import InlineDecisionWizard, { type WizardSessionData } from './InlineDecisionWizard';
 import InlineDecisionResults from './InlineDecisionResults';
 import {
   generateProjectFromConversation,
@@ -60,6 +60,7 @@ export default function ChatInterface({ token, onProjectGenerated, resumeSession
   const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
   const [decisionMode, setDecisionMode] = useState<'exploration' | 'structured' | null>(null);
   const [rankingResult, setRankingResult] = useState<RankingResult | null>(null);
+  const [wizardData, setWizardData] = useState<WizardSessionData | null>(null);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const toolsMenuRef = useRef<HTMLDivElement>(null);
@@ -705,8 +706,9 @@ Do NOT list these out robotically; weave them naturally into your response so we
                     title={context.decision_frame.title || 'Decision'}
                     problemStatement={context.decision_frame.problem_statement || ''}
                     domain={context.decision_frame.domain || 'general'}
-                    onComplete={(ranking) => {
+                    onComplete={(ranking, sessionData) => {
                       setRankingResult(ranking);
+                      setWizardData(sessionData);
                       scrollToBottom();
                     }}
                     onCancel={() => {
@@ -722,7 +724,7 @@ Do NOT list these out robotically; weave them naturally into your response so we
             {rankingResult && (
               <div style={{ display: 'flex', justifyContent: 'flex-start', maxWidth: 720, margin: '0 auto', width: '100%' }}>
                 <div style={{ width: '100%' }}>
-                  <InlineDecisionResults ranking={rankingResult} />
+                  <InlineDecisionResults ranking={rankingResult} wizardData={wizardData} />
                 </div>
               </div>
             )}
@@ -894,6 +896,7 @@ Do NOT list these out robotically; weave them naturally into your response so we
                           onClick={() => {
                             setDecisionMode('structured');
                             setRankingResult(null);
+                            setWizardData(null);
                             setShowToolsMenu(false);
                           }}
                           style={{
